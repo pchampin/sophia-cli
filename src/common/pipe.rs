@@ -1,0 +1,41 @@
+use anyhow::Result;
+use clap::Parser;
+
+#[derive(clap::Subcommand, Clone, Debug)]
+#[command(
+    subcommand_value_name = "PIPELINE",
+    subcommand_help_heading = "Pineline",
+    disable_help_subcommand = true
+)]
+pub enum PipeSubcommand {
+    // // NB: this would be ideal, but causes a stack overflow
+    // /// Optionally pipe quads to another subcommand
+    // #[command(subcommand, name="!")]
+    // Pipe(Box<crate::SinkSubcommand>)
+
+    // // NB: instead, we defer the parsing of the piped command
+    /// Optionanally pipe quads to another subcommand
+    #[command(name = "!")]
+    Pipe(PipeArgs),
+}
+
+#[derive(clap::Args, Clone, Debug)]
+pub struct PipeArgs {
+    #[arg(trailing_var_arg = true)]
+    args: Vec<String>,
+}
+
+impl PipeSubcommand {
+    pub fn try_parse(&self) -> Result<crate::SinkSubcommand> {
+        let PipeSubcommand::Pipe(pipe) = self;
+        Ok(PipeCommand::try_parse_from(&pipe.args[..])?.subcommand)
+    }
+}
+
+// Only used for parsing, never used as a
+#[derive(Parser, Clone, Debug)]
+#[command(multicall = true)]
+pub struct PipeCommand {
+    #[command(subcommand)]
+    subcommand: crate::SinkSubcommand,
+}

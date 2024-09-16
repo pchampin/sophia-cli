@@ -1,0 +1,22 @@
+[package]
+name = "sophia-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.88"
+clap = { version = "4.5.17", features = ["derive", "env"] }
+clap-verbosity = "2.1.0"
+env_logger = "0.11.5"
+log = "0.4.22"
+regex = "1.10.6"
+reqwest = { version = "0.12.7", features = ["blocking"] }
+rio_turtle = { version = "0.8.5", features = ["generalized"] }
+sophia = { version = "0.8.0", features = ["file_url", "http_client", "jsonld", "xml"] }
+
+[[bin]]
+name = "sop"
+path = "src/main.rs"
+
+[dev-dependencies]
+test-case = "3.3.1"
