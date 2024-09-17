@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{stdout, BufWriter};
+use std::io::{stdout, BufWriter, Write};
 
 use anyhow::Error;
 use anyhow::Result;
@@ -8,7 +8,7 @@ use sophia::api::source::QuadSource;
 use sophia::api::term::SimpleTerm;
 use sophia::c14n::rdfc10::{DEFAULT_DEPTH_FACTOR, DEFAULT_PERMUTATION_LIMIT};
 use sophia::c14n::{
-    hash::{HashFunction, Sha256, Sha384},
+    hash::{Sha256, Sha384},
     rdfc10,
 };
 
@@ -48,54 +48,45 @@ pub struct Args {
     poison_resistance: FiniteNonNegativeF64,
 }
 
-pub fn run<Q: QuadSource>(quads: Q, args: Args) -> Result<()>
+pub fn run<Q: QuadSource>(quads: Q, mut args: Args) -> Result<()>
 where
     <Q as QuadSource>::Error: Send + Sync,
 {
     log::trace!("canonicalize args: {args:#?}");
     let dataset: MyDataset = quads.collect_quads()?;
-    match args.function {
-        C14nFunction::RDFC10 => run_rdfc10(dataset, args),
+    match args.output.take() {
+        None => run_with_output(dataset, args, stdout()),
+        Some(filename) => run_with_output(dataset, args, File::create(filename)?),
     }
 }
 
-fn run_rdfc10(dataset: MyDataset, args: Args) -> Result<()> {
+fn run_with_output<W: Write>(dataset: MyDataset, args: Args, output: W) -> Result<()> {
+    let output = BufWriter::new(output);
+    match args.function {
+        C14nFunction::RDFC10 => run_rdfc10(dataset, output, args),
+    }
+}
+
+fn run_rdfc10<W: Write>(dataset: MyDataset, output: BufWriter<W>, args: Args) -> Result<()> {
     let hash = args.hash_function.unwrap_or(HashFunctionId::Sha256);
     let poison_resistance: f64 = args.poison_resistance.into();
     let depth_factor = DEFAULT_DEPTH_FACTOR * poison_resistance as f32;
     let permutation_limit = (DEFAULT_PERMUTATION_LIMIT as f64 * poison_resistance) as usize;
     match hash {
-        HashFunctionId::Sha256 => {
-            run_rdfc10_with::<Sha256>(dataset, args.output, depth_factor, permutation_limit)?
-        }
-        HashFunctionId::Sha384 => {
-            run_rdfc10_with::<Sha384>(dataset, args.output, depth_factor, permutation_limit)?
-        }
+        HashFunctionId::Sha256 => rdfc10::normalize_with::<Sha256, _, _>(
+            &dataset,
+            output,
+            depth_factor,
+            permutation_limit,
+        )?,
+        HashFunctionId::Sha384 => rdfc10::normalize_with::<Sha384, _, _>(
+            &dataset,
+            output,
+            depth_factor,
+            permutation_limit,
+        )?,
         #[allow(unreachable_patterns)]
         _ => Err(Error::msg("Cannot apply RDFC-10 with hash function {hash}"))?,
-    }
-    Ok(())
-}
-
-fn run_rdfc10_with<H: HashFunction>(
-    dataset: MyDataset,
-    output: Option<String>,
-    depth_factor: f32,
-    permutation_limit: usize,
-) -> Result<()> {
-    match output {
-        None => rdfc10::normalize_with::<H, _, _>(
-            &dataset,
-            BufWriter::new(stdout()),
-            depth_factor,
-            permutation_limit,
-        )?,
-        Some(filename) => rdfc10::normalize_with::<H, _, _>(
-            &dataset,
-            BufWriter::new(File::create(filename)?),
-            depth_factor,
-            permutation_limit,
-        )?,
     }
     Ok(())
 }
