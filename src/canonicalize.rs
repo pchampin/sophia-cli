@@ -3,7 +3,6 @@ use std::io::{stdout, BufWriter};
 
 use anyhow::Error;
 use anyhow::Result;
-use sophia::api::dataset::Dataset;
 use sophia::api::quad::Spog;
 use sophia::api::source::QuadSource;
 use sophia::api::term::SimpleTerm;
@@ -14,7 +13,6 @@ use sophia::c14n::{
 };
 
 use crate::common::f64::FiniteNonNegativeF64;
-use crate::common::pipe::PipeSubcommand;
 
 mod c14n_function;
 use c14n_function::*;
@@ -48,9 +46,6 @@ pub struct Args {
     /// Higher value means that the c14n will stop earlier when complex graphs are encountered.
     #[arg(short, long, default_value_t = FiniteNonNegativeF64(1.0))]
     poison_resistance: FiniteNonNegativeF64,
-
-    #[command(subcommand)]
-    pipeline: Option<PipeSubcommand>,
 }
 
 pub fn run<Q: QuadSource>(quads: Q, args: Args) -> Result<()>
@@ -58,13 +53,7 @@ where
     <Q as QuadSource>::Error: Send + Sync,
 {
     log::trace!("canonicalize args: {args:#?}");
-    if args.output.is_some() && args.pipeline.is_some() {
-        Err(Error::msg(
-            "Cannot use --output and pipeline at the same time",
-        ))?
-    }
     let dataset: MyDataset = quads.collect_quads()?;
-
     match args.function {
         C14nFunction::RDFC10 => run_rdfc10(dataset, args),
     }
@@ -75,65 +64,40 @@ fn run_rdfc10(dataset: MyDataset, args: Args) -> Result<()> {
     let poison_resistance: f64 = args.poison_resistance.into();
     let depth_factor = DEFAULT_DEPTH_FACTOR * poison_resistance as f32;
     let permutation_limit = (DEFAULT_PERMUTATION_LIMIT as f64 * poison_resistance) as usize;
-    let handler = HybridHandler::new(args.pipeline, args.output)?;
     match hash {
         HashFunctionId::Sha256 => {
-            run_rdfc10_with::<Sha256>(dataset, handler, depth_factor, permutation_limit)?
+            run_rdfc10_with::<Sha256>(dataset, args.output, depth_factor, permutation_limit)?
         }
         HashFunctionId::Sha384 => {
-            run_rdfc10_with::<Sha384>(dataset, handler, depth_factor, permutation_limit)?
+            run_rdfc10_with::<Sha384>(dataset, args.output, depth_factor, permutation_limit)?
         }
         #[allow(unreachable_patterns)]
-        _ => Err(Error::msg("Cannot apply RDFC-10 with {hash}"))?,
+        _ => Err(Error::msg("Cannot apply RDFC-10 with hash function {hash}"))?,
     }
     Ok(())
 }
 
 fn run_rdfc10_with<H: HashFunction>(
     dataset: MyDataset,
-    handler: HybridHandler,
+    output: Option<String>,
     depth_factor: f32,
     permutation_limit: usize,
 ) -> Result<()> {
-    use HybridHandler::*;
-    match handler {
-        Stdout => rdfc10::normalize_with::<H, _, _>(
+    match output {
+        None => rdfc10::normalize_with::<H, _, _>(
             &dataset,
             BufWriter::new(stdout()),
             depth_factor,
             permutation_limit,
         )?,
-        File(f) => rdfc10::normalize_with::<H, _, _>(
+        Some(filename) => rdfc10::normalize_with::<H, _, _>(
             &dataset,
-            BufWriter::new(f),
+            BufWriter::new(File::create(filename)?),
             depth_factor,
             permutation_limit,
         )?,
-        Pipeline(sink) => {
-            let (ds, _) = rdfc10::relabel_with::<H, _>(&dataset, depth_factor, permutation_limit)?;
-            sink.handle_quads(ds.quads())?;
-        }
     }
     Ok(())
 }
 
 type MyDataset = std::collections::HashSet<Spog<SimpleTerm<'static>>>;
-
-enum HybridHandler {
-    Stdout,
-    File(File),
-    Pipeline(crate::SinkSubcommand),
-}
-
-impl HybridHandler {
-    pub fn new(pipeline: Option<PipeSubcommand>, output: Option<String>) -> Result<Self> {
-        debug_assert!(pipeline.is_none() || output.is_none());
-        if let Some(pipe) = pipeline {
-            Ok(Self::Pipeline(pipe.parse()))
-        } else if let Some(output) = output {
-            Ok(Self::File(File::create(output)?))
-        } else {
-            Ok(Self::Stdout)
-        }
-    }
-}
