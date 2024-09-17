@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use clap_verbosity::{InfoLevel, Verbosity};
+use clap_verbosity::InfoLevel;
 use sophia::api::source::QuadSource;
 
 mod canonicalize;
@@ -13,7 +13,7 @@ mod serialize;
 #[command(version, about, disable_help_subcommand = true)]
 struct CmdArgs {
     #[command(flatten)]
-    verbose: Verbosity<InfoLevel>,
+    verbose: common::verbosity::Verbosity<InfoLevel>,
 
     #[command(subcommand)]
     pub subcommand: Subcommand,
@@ -63,7 +63,6 @@ fn main() -> Result<()> {
         .format_timestamp(None)
         .filter_level(args.verbose.log_level_filter())
         .init();
-
     use SourceSubcommand::*;
     use Subcommand::*;
     match args.subcommand {
