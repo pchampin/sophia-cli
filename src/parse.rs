@@ -45,7 +45,7 @@ pub struct Args {
 
 pub fn run(args: Args) -> Result<()> {
     log::trace!("parse args: {args:#?}");
-    let handler = QuadHandler::new(args.pipeline)?;
+    let handler = QuadHandler::new(args.pipeline);
     match args.file_or_url {
         FileOrUrl::StdIn => {
             let format = match args.format {

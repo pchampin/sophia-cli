@@ -10,7 +10,7 @@ mod serialize;
 
 /// Swiss-army knife for processing RDF and Linked Data.
 #[derive(Parser, Debug)]
-#[command(version, about)]
+#[command(version, about, disable_help_subcommand = true)]
 struct CmdArgs {
     #[command(flatten)]
     verbose: Verbosity<InfoLevel>,
@@ -21,11 +21,9 @@ struct CmdArgs {
 
 #[derive(clap::Subcommand, Clone, Debug)]
 enum Subcommand {
-    /// Subcommand that can only be used on the right side of a pipe
     #[command(flatten)]
     Source(SourceSubcommand),
 
-    /// Subcommand that can be used on the right side of a pipe
     #[command(flatten)]
     Sink(SinkSubcommand),
 }

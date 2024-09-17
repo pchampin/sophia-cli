@@ -3,7 +3,7 @@
 
 use std::io::Write;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use sophia::{
     api::{
         quad::{Quad, Spog},
@@ -19,13 +19,10 @@ pub enum QuadHandler {
 }
 
 impl QuadHandler {
-    pub fn new(pipeline: Option<crate::common::pipe::PipeSubcommand>) -> Result<Self> {
+    pub fn new(pipeline: Option<crate::common::pipe::PipeSubcommand>) -> Self {
         match pipeline {
-            None => Ok(Self::Stdout),
-            Some(pipe) => pipe
-                .try_parse()
-                .map(Self::Pipeline)
-                .with_context(|| "Error parsing subcommand in pipeline"),
+            None => Self::Stdout,
+            Some(pipe) => Self::Pipeline(pipe.parse()),
         }
     }
 

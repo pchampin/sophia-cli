@@ -1,4 +1,3 @@
-use anyhow::Result;
 use clap::Parser;
 
 #[derive(clap::Subcommand, Clone, Debug)]
@@ -26,15 +25,15 @@ pub struct PipeArgs {
 }
 
 impl PipeSubcommand {
-    pub fn try_parse(&self) -> Result<crate::SinkSubcommand> {
+    pub fn parse(&self) -> crate::SinkSubcommand {
         let PipeSubcommand::Pipe(pipe) = self;
-        Ok(PipeCommand::try_parse_from(&pipe.args[..])?.subcommand)
+        PipeCommand::parse_from(&pipe.args[..]).subcommand
     }
 }
 
 // Only used for parsing, never used as a
 #[derive(Parser, Clone, Debug)]
-#[command(multicall = true)]
+#[command(name = "!", multicall = true, disable_help_subcommand = true)]
 pub struct PipeCommand {
     #[command(subcommand)]
     subcommand: crate::SinkSubcommand,

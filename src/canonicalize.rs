@@ -1,7 +1,8 @@
 use std::fs::File;
 use std::io::{stdout, BufWriter};
 
-use anyhow::{Context, Error, Result};
+use anyhow::Error;
+use anyhow::Result;
 use sophia::api::dataset::Dataset;
 use sophia::api::quad::Spog;
 use sophia::api::source::QuadSource;
@@ -128,9 +129,7 @@ impl HybridHandler {
     pub fn new(pipeline: Option<PipeSubcommand>, output: Option<String>) -> Result<Self> {
         debug_assert!(pipeline.is_none() || output.is_none());
         if let Some(pipe) = pipeline {
-            pipe.try_parse()
-                .map(Self::Pipeline)
-                .with_context(|| "Error parsing subcommand in pipeline")
+            Ok(Self::Pipeline(pipe.parse()))
         } else if let Some(output) = output {
             Ok(Self::File(File::create(output)?))
         } else {
