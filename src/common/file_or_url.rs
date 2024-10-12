@@ -15,7 +15,7 @@ impl std::str::FromStr for FileOrUrl {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self> {
-        static URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("^http(s)://").unwrap());
+        static URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("^http(s)?://").unwrap());
         if value == "-" {
             Ok(FileOrUrl::StdIn)
         } else if URL_RE.is_match(value) {
