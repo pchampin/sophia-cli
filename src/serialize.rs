@@ -102,18 +102,7 @@ where
     <S as TripleSerializer>::Error: Send + Sync,
 {
     let warned = AtomicBool::new(false);
-    let triples = quads
-        .filter_quads(|q| {
-            if q.g().is_some() {
-                if !warned.fetch_or(true, Ordering::Relaxed) {
-                    log::warn!("Named graphs are ignored when serializing to triples-only format.");
-                }
-                false
-            } else {
-                true
-            }
-        })
-        .to_triples();
+    let triples = quads.to_triples();
     match ser.serialize_triples(triples) {
         Ok(_) => Ok(()),
         Err(SourceError(e)) => Err(e).with_context(|| "Error in incoming triples"),
