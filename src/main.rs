@@ -5,6 +5,7 @@ use sophia::api::source::QuadSource;
 
 mod canonicalize;
 mod common;
+mod merge_default_graph;
 mod parse;
 mod serialize;
 
@@ -42,6 +43,8 @@ enum SinkSubcommand {
     Canonicalize(canonicalize::Args),
     #[command(visible_aliases=["s"], aliases=["se", "ser"])]
     Serialize(serialize::Args),
+    #[command(visible_aliases=["m"], aliases=["me", "mer"])]
+    MergeDefaultGraph(merge_default_graph::Args),
 }
 
 impl SinkSubcommand {
@@ -52,6 +55,7 @@ impl SinkSubcommand {
         match self {
             Self::Canonicalize(args) => canonicalize::run(quads, args),
             Self::Serialize(args) => serialize::run(quads, args),
+            Self::MergeDefaultGraph(args) => merge_default_graph::run(quads, args),
         }
     }
 }

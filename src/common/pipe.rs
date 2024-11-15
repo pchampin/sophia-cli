@@ -3,7 +3,7 @@ use clap::Parser;
 #[derive(clap::Subcommand, Clone, Debug)]
 #[command(
     subcommand_value_name = "PIPELINE",
-    subcommand_help_heading = "Pineline",
+    subcommand_help_heading = "Pipeline",
     disable_help_subcommand = true
 )]
 pub enum PipeSubcommand {
