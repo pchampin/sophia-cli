@@ -13,7 +13,7 @@ pub enum PipeSubcommand {
     // Pipe(Box<crate::SinkSubcommand>)
 
     // // NB: instead, we defer the parsing of the piped command
-    /// Optionanally pipe quads to another subcommand
+    /// Optionally pipe quads to another subcommand
     #[command(name = "!")]
     Pipe(PipeArgs),
 }
