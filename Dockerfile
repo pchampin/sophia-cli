@@ -1,5 +1,5 @@
 # Image for building the project
-FROM rust:bookworm
+FROM docker.io/rust:bookworm
 # 1. create empty shell project
 RUN USER=root cargo new --bin app
 WORKDIR /app
