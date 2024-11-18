@@ -56,10 +56,7 @@ pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
     }
 }
 
-pub fn serialize_to_write<Q: QuadSource, W: Write>(quads: Q, args: Args, write: W) -> Result<()>
-where
-    <Q as QuadSource>::Error: Send + Sync,
-{
+pub fn serialize_to_write<W: Write>(quads: QuadIter, args: Args, write: W) -> Result<()> {
     let out = std::io::BufWriter::new(write);
     match args.format {
         Format::GeneralizedTriG => {
@@ -100,9 +97,8 @@ where
     }
 }
 
-fn serialize_triples<Q: QuadSource, S: TripleSerializer>(quads: Q, mut ser: S) -> Result<()>
+fn serialize_triples<S: TripleSerializer>(mut quads: QuadIter, mut ser: S) -> Result<()>
 where
-    <Q as QuadSource>::Error: Send + Sync,
     <S as TripleSerializer>::Error: Send + Sync,
 {
     let warned = AtomicBool::new(false);
@@ -125,12 +121,11 @@ where
     }
 }
 
-fn serialize_quads<Q: QuadSource, S: QuadSerializer>(quads: Q, mut ser: S) -> Result<()>
+fn serialize_quads<S: QuadSerializer>(mut quads: QuadIter, mut ser: S) -> Result<()>
 where
-    <Q as QuadSource>::Error: Send + Sync,
     <S as QuadSerializer>::Error: Send + Sync,
 {
-    match ser.serialize_quads(quads) {
+    match ser.serialize_quads(quads.as_iter()) {
         Ok(_) => Ok(()),
         Err(SourceError(e)) => Err(e).with_context(|| "Error in incoming triples"),
         Err(SinkError(e)) => Err(e).with_context(|| "Error in serializing triples"),

@@ -28,7 +28,7 @@ impl QuadHandler {
         match self {
             QuadHandler::Stdout => {
                 let mut stdout = std::io::stdout();
-                quads.try_for_each_quad(|q| {
+                quads.as_iter().try_for_each_quad(|q| {
                     write_term(&mut stdout, q.s())?;
                     stdout.write_all(b"\t")?;
                     write_term(&mut stdout, q.p())?;

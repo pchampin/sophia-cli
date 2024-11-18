@@ -9,27 +9,14 @@ use sophia::{
 };
 
 /// The type use to convey quads from one subcommand to the next one.
-pub struct QuadIter<'a>(Box<dyn Iterator<Item = Result<Spog<ArcTerm>>> + 'a>);
-
-impl<'a> Iterator for QuadIter<'a> {
-    type Item = Result<Spog<ArcTerm>, QuadIterError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|res| res.map_err(QuadIterError))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-}
+pub struct QuadIter<'a>(Box<dyn Iterator<Item = QuadIterItem> + 'a>);
 
 impl<'a> QuadIter<'a> {
-    pub fn new<I, E>(quads: I) -> Self
+    pub fn new<I>(quads: I) -> Self
     where
-        I: Iterator<Item = Result<Spog<ArcTerm>, E>> + 'a,
-        anyhow::Error: From<E>,
+        I: Iterator<Item = QuadIterItem> + 'a,
     {
-        Self(Box::new(quads.map(|res| res.map_err(anyhow::Error::from))))
+        Self(Box::new(quads))
     }
 
     pub fn from_arcterm_quad_source<Q>(quads: Q) -> Self
@@ -37,7 +24,12 @@ impl<'a> QuadIter<'a> {
         Q: for<'x> QuadSource<Quad<'x> = Spog<ArcTerm>> + 'a,
         anyhow::Error: From<<Q as QuadSource>::Error>,
     {
-        Self::new(quads.map_quads(|q| q).into_iter())
+        Self::new(
+            quads
+                .map_quads(|q| q)
+                .into_iter()
+                .map(|res| res.map_err(QuadIterError::new)),
+        )
     }
 
     /// Convert an arbitrary [`QuadSource`] into a [`QuadIter`].
@@ -56,10 +48,44 @@ impl<'a> QuadIter<'a> {
             (spo, g)
         }))
     }
+
+    /// Expose the inner [`Iterator`] (and [`QuadSource`]) of this [`QuadIter`]
+    pub fn as_iter(&mut self) -> &mut dyn Iterator<Item = QuadIterItem> {
+        &mut self.0
+    }
 }
 
+impl<'a> std::ops::Deref for QuadIter<'a> {
+    type Target = dyn Iterator<Item = QuadIterItem> + 'a;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> std::ops::DerefMut for QuadIter<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+//
+
+/// The type of items that [`QuadIter`] yields.
+pub type QuadIterItem = Result<Spog<ArcTerm>, QuadIterError>;
+
+/// The type of errors that [`QuadIter`] yields.
+/// This is actually just a wrapper around [`anyhow::Error`] that makes it implement [`std::error::Error`].
 #[derive(Debug)]
 pub struct QuadIterError(anyhow::Error);
+
+//
+
+impl QuadIterError {
+    pub fn new<E: Into<anyhow::Error>>(err: E) -> Self {
+        Self(err.into())
+    }
+}
 
 impl std::fmt::Display for QuadIterError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
