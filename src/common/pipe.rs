@@ -3,7 +3,7 @@ use clap::Parser;
 #[derive(clap::Subcommand, Clone, Debug)]
 #[command(
     subcommand_value_name = "PIPELINE",
-    subcommand_help_heading = "Pineline",
+    subcommand_help_heading = "Pipeline",
     disable_help_subcommand = true
 )]
 pub enum PipeSubcommand {
@@ -13,7 +13,7 @@ pub enum PipeSubcommand {
     // Pipe(Box<crate::SinkSubcommand>)
 
     // // NB: instead, we defer the parsing of the piped command
-    /// Optionanally pipe quads to another subcommand
+    /// Optionally pipe quads to another subcommand
     #[command(name = "!")]
     Pipe(PipeArgs),
 }

@@ -5,13 +5,11 @@ use std::io::Write;
 
 use anyhow::Result;
 use sophia::{
-    api::{
-        quad::{Quad, Spog},
-        source::{QuadSource, TripleSource},
-        triple::Triple,
-    },
+    api::{quad::Quad, source::QuadSource},
     turtle::serializer::nt::write_term,
 };
+
+use super::quad_iter::QuadIter;
 
 pub enum QuadHandler {
     Stdout,
@@ -26,10 +24,7 @@ impl QuadHandler {
         }
     }
 
-    pub fn handle_quads<Q: QuadSource>(self, mut quads: Q) -> Result<()>
-    where
-        <Q as QuadSource>::Error: Send + Sync,
-    {
+    pub fn handle_quads(self, mut quads: QuadIter) -> Result<()> {
         match self {
             QuadHandler::Stdout => {
                 let mut stdout = std::io::stdout();
@@ -50,34 +45,5 @@ impl QuadHandler {
             }
             QuadHandler::Pipeline(sink) => sink.handle_quads(quads),
         }
-    }
-
-    pub fn handle_triples<T: TripleSource>(self, triples: T) -> Result<()>
-    where
-        <T as TripleSource>::Error: Send + Sync,
-    {
-        self.handle_quads(TripleToQuad(triples))
-    }
-}
-
-struct TripleToQuad<T>(T);
-
-impl<T: TripleSource> QuadSource for TripleToQuad<T>
-where
-    <T as TripleSource>::Error: Send + Sync,
-{
-    type Quad<'x> = Spog<<<T as TripleSource>::Triple<'x> as Triple>::Term>;
-
-    type Error = <T as TripleSource>::Error;
-
-    fn try_for_some_quad<E, F>(
-        &mut self,
-        mut f: F,
-    ) -> sophia::api::source::StreamResult<bool, Self::Error, E>
-    where
-        E: std::error::Error,
-        F: FnMut(Self::Quad<'_>) -> std::result::Result<(), E>,
-    {
-        self.0.try_for_some_triple(|t| f(t.into_quad()))
     }
 }

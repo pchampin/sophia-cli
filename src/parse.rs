@@ -2,7 +2,10 @@ use std::io::BufReader;
 
 use anyhow::{Error, Result};
 use sophia::{
-    api::parser::{QuadParser, TripleParser},
+    api::{
+        parser::{QuadParser, TripleParser},
+        source::TripleSource,
+    },
     iri::Iri,
     jsonld::{JsonLdOptions, JsonLdParser},
     turtle::parser::{
@@ -14,6 +17,7 @@ use sophia::{
 
 use crate::common::{
     file_or_url::FileOrUrl, format::*, pipe::PipeSubcommand, quad_handler::QuadHandler,
+    quad_iter::QuadIter,
 };
 
 /// Parse data in an RDF concrete syntax into quads
@@ -113,12 +117,12 @@ fn parse_read<R: std::io::Read>(
         GeneralizedNQuads => {
             let parser = GNQuadsParser {};
             let quads = QuadParser::parse(&parser, bufread);
-            handler.handle_quads(quads)
+            handler.handle_quads(QuadIter::from_quad_source(quads))
         }
         GeneralizedTriG => {
             let parser = GTriGParser { base: Some(base) };
             let quads = QuadParser::parse(&parser, bufread);
-            handler.handle_quads(quads)
+            handler.handle_quads(QuadIter::from_quad_source(quads))
         }
         JsonLd => {
             if inline_contexts_only {
@@ -127,7 +131,7 @@ fn parse_read<R: std::io::Read>(
                     .with_document_loader_closure(sophia::jsonld::loader::NoLoader::new);
                 let parser = JsonLdParser::new_with_options(options);
                 let quads = QuadParser::parse(&parser, bufread);
-                handler.handle_quads(quads)
+                handler.handle_quads(QuadIter::from_quad_source(quads))
             } else {
                 let options = JsonLdOptions::new()
                     .with_base(base.map_unchecked(std::sync::Arc::from))
@@ -139,33 +143,33 @@ fn parse_read<R: std::io::Read>(
                     });
                 let parser = JsonLdParser::new_with_options(options);
                 let quads = QuadParser::parse(&parser, bufread);
-                handler.handle_quads(quads)
+                handler.handle_quads(QuadIter::from_quad_source(quads))
             }
         }
         NQuads => {
             let parser = NQuadsParser {};
             let quads = QuadParser::parse(&parser, bufread);
-            handler.handle_quads(quads)
+            handler.handle_quads(QuadIter::from_quad_source(quads))
         }
         NTriples => {
             let parser = NTriplesParser {};
             let triples = TripleParser::parse(&parser, bufread);
-            handler.handle_triples(triples)
+            handler.handle_quads(QuadIter::from_quad_source(triples.to_quads()))
         }
         RdfXml => {
             let parser = RdfXmlParser { base: Some(base) };
             let triples = TripleParser::parse(&parser, bufread);
-            handler.handle_triples(triples)
+            handler.handle_quads(QuadIter::from_quad_source(triples.to_quads()))
         }
         TriG => {
             let parser = TriGParser { base: Some(base) };
             let quads = QuadParser::parse(&parser, bufread);
-            handler.handle_quads(quads)
+            handler.handle_quads(QuadIter::from_quad_source(quads))
         }
         Turtle => {
             let parser = TurtleParser { base: Some(base) };
             let triples = TripleParser::parse(&parser, bufread);
-            handler.handle_triples(triples)
+            handler.handle_quads(QuadIter::from_quad_source(triples.to_quads()))
         }
     }
 }

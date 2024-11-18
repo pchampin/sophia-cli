@@ -23,7 +23,7 @@ use sophia::{
     xml::serializer::{RdfXmlConfig, RdfXmlSerializer},
 };
 
-use crate::common::format::Format;
+use crate::common::{format::Format, quad_iter::QuadIter};
 
 /// Serialize quads to an RDF concrete syntax
 #[derive(clap::Args, Clone, Debug)]
@@ -36,15 +36,19 @@ pub struct Args {
     #[arg(short, long)]
     output: Option<String>,
 
+    #[command(flatten)]
+    options: SerializerOptions,
+}
+
+/// Reusable serializer options
+#[derive(clap::Args, Clone, Debug)]
+pub struct SerializerOptions {
     /// Disable pretty-printing (available for RDF/XML, Turtle, TriG)
     #[arg(short = 'P', long)]
     no_pretty: bool,
 }
 
-pub fn run<Q: QuadSource>(quads: Q, mut args: Args) -> Result<()>
-where
-    <Q as QuadSource>::Error: Send + Sync,
-{
+pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
     log::trace!("serialize args: {args:#?}");
     match args.output.take() {
         None => serialize_to_write(quads, args, stdout()),
@@ -84,12 +88,12 @@ where
             serialize_triples(quads, ser)
         }
         Format::TriG => {
-            let config = TrigConfig::new().with_pretty(!args.no_pretty);
+            let config = TrigConfig::new().with_pretty(!args.options.no_pretty);
             let ser = TrigSerializer::new_with_config(out, config);
             serialize_quads(quads, ser)
         }
         Format::Turtle => {
-            let config = TurtleConfig::new().with_pretty(!args.no_pretty);
+            let config = TurtleConfig::new().with_pretty(!args.options.no_pretty);
             let ser = TurtleSerializer::new_with_config(out, config);
             serialize_triples(quads, ser)
         }

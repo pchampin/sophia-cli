@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use clap_verbosity::InfoLevel;
-use sophia::api::source::QuadSource;
+use common::quad_iter::QuadIter;
 
 mod canonicalize;
 mod common;
@@ -45,10 +45,7 @@ enum SinkSubcommand {
 }
 
 impl SinkSubcommand {
-    pub fn handle_quads<Q: QuadSource>(self, quads: Q) -> Result<()>
-    where
-        <Q as QuadSource>::Error: Send + Sync,
-    {
+    pub fn handle_quads(self, quads: QuadIter) -> Result<()> {
         match self {
             Self::Canonicalize(args) => canonicalize::run(quads, args),
             Self::Serialize(args) => serialize::run(quads, args),
@@ -71,6 +68,8 @@ fn main() -> Result<()> {
     }
 }
 
-fn quad_from_stdin() -> impl QuadSource<Error = rio_turtle::TurtleError> {
-    sophia::turtle::parser::nq::parse_bufread(std::io::BufReader::new(std::io::stdin()))
+fn quad_from_stdin() -> QuadIter<'static> {
+    QuadIter::from_quad_source(sophia::turtle::parser::gnq::parse_bufread(
+        std::io::BufReader::new(std::io::stdin()),
+    ))
 }

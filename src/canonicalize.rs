@@ -13,6 +13,7 @@ use sophia::c14n::{
 };
 
 use crate::common::f64::FiniteNonNegativeF64;
+use crate::common::quad_iter::QuadIter;
 
 mod c14n_function;
 use c14n_function::*;
@@ -48,10 +49,7 @@ pub struct Args {
     poison_resistance: FiniteNonNegativeF64,
 }
 
-pub fn run<Q: QuadSource>(quads: Q, mut args: Args) -> Result<()>
-where
-    <Q as QuadSource>::Error: Send + Sync,
-{
+pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
     log::trace!("canonicalize args: {args:#?}");
     let dataset: MyDataset = quads.collect_quads()?;
     match args.output.take() {
