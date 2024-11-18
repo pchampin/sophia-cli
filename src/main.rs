@@ -5,6 +5,7 @@ use common::quad_iter::QuadIter;
 
 mod canonicalize;
 mod common;
+mod merge_default_graph;
 mod parse;
 mod serialize;
 
@@ -40,6 +41,8 @@ enum SourceSubcommand {
 enum SinkSubcommand {
     #[command(visible_aliases=["c", "c14n"], aliases=["ca", "can"])]
     Canonicalize(canonicalize::Args),
+    #[command(visible_aliases=["m", "merge"], aliases=["me", "mer"])]
+    MergeDefaultGraph(merge_default_graph::Args),
     #[command(visible_aliases=["s"], aliases=["se", "ser"])]
     Serialize(serialize::Args),
 }
@@ -48,6 +51,7 @@ impl SinkSubcommand {
     pub fn handle_quads(self, quads: QuadIter) -> Result<()> {
         match self {
             Self::Canonicalize(args) => canonicalize::run(quads, args),
+            Self::MergeDefaultGraph(args) => merge_default_graph::run(quads, args),
             Self::Serialize(args) => serialize::run(quads, args),
         }
     }
