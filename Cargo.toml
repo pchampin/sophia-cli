@@ -12,7 +12,13 @@ log = "0.4.22"
 regex = "1.10.6"
 reqwest = { version = "0.12.7", features = ["blocking"] }
 rio_turtle = { version = "0.8.5", features = ["generalized"] }
-sophia = { version = "0.8.0", features = ["file_url", "http_client", "jsonld", "xml"] }
+
+[dependencies.sophia]
+version = "0.9.0"
+features = ["file_url", "http_client", "jsonld", "sparql", "xml"]
+# path = "../sophia_rs/sophia"
+git = "https://github.com/pchampin/sophia_rs.git"
+rev = "00d3cf98"
 
 [[bin]]
 name = "sop"

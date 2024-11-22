@@ -7,6 +7,7 @@ mod canonicalize;
 mod common;
 mod merge_default_graph;
 mod parse;
+mod query;
 mod serialize;
 
 /// Swiss-army knife for processing RDF and Linked Data.
@@ -29,7 +30,7 @@ enum Subcommand {
     Sink(SinkSubcommand),
 }
 
-/// Subcommands that can only be used on the left-hand side of a pipe
+/// Subcommands that can only be used on the left-hand side of a pipe (or on their own)
 #[derive(clap::Subcommand, Clone, Debug)]
 enum SourceSubcommand {
     #[command(visible_aliases=["p"], aliases=["pa", "par"])]
@@ -43,6 +44,8 @@ enum SinkSubcommand {
     Canonicalize(canonicalize::Args),
     #[command(visible_aliases=["m", "merge"], aliases=["me", "mer"])]
     MergeDefaultGraph(merge_default_graph::Args),
+    #[command(visible_aliases=["q"], aliases=["qu", "que"])]
+    Query(query::Args),
     #[command(visible_aliases=["s"], aliases=["se", "ser"])]
     Serialize(serialize::Args),
 }
@@ -52,6 +55,7 @@ impl SinkSubcommand {
         match self {
             Self::Canonicalize(args) => canonicalize::run(quads, args),
             Self::MergeDefaultGraph(args) => merge_default_graph::run(quads, args),
+            Self::Query(args) => query::run(quads, args),
             Self::Serialize(args) => serialize::run(quads, args),
         }
     }

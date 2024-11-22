@@ -76,11 +76,8 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, args: Args, write: W) -> Re
             serialize_triples(quads, ser)
         }
         Format::RdfXml => {
-            /* // available only on Sophia's github for the moment
-            let indent = if args.no_pretty { 0 } else { 4 };
+            let indent = if args.options.no_pretty { 0 } else { 4 };
             let config = RdfXmlConfig::new().with_indentation(indent);
-            */
-            let config = RdfXmlConfig {};
             let ser = RdfXmlSerializer::new_with_config(out, config);
             serialize_triples(quads, ser)
         }

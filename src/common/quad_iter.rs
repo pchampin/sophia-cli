@@ -2,7 +2,7 @@ use anyhow::Result;
 use sophia::{
     api::{
         quad::{Quad, Spog},
-        source::QuadSource,
+        source::{QuadSource, Source},
         term::FromTerm,
     },
     term::ArcTerm,
@@ -22,7 +22,7 @@ impl<'a> QuadIter<'a> {
     pub fn from_arcterm_quad_source<Q>(quads: Q) -> Self
     where
         Q: for<'x> QuadSource<Quad<'x> = Spog<ArcTerm>> + 'a,
-        anyhow::Error: From<<Q as QuadSource>::Error>,
+        anyhow::Error: From<<Q as Source>::Error>,
     {
         Self::new(
             quads
@@ -35,11 +35,11 @@ impl<'a> QuadIter<'a> {
     /// Convert an arbitrary [`QuadSource`] into a [`QuadIter`].
     ///
     /// Only use if the terms in the QuadSource are *not* [`ArcTerm`]s,
-    /// otherwise, use [`QuadSource::from_arcterm_quad_source`] or [`QuadSource::new`].
+    /// otherwise, use [`QuadIter::from_arcterm_quad_source`] or [`QuadIter::new`].
     pub fn from_quad_source<Q>(quads: Q) -> Self
     where
         Q: QuadSource + 'a,
-        anyhow::Error: From<<Q as QuadSource>::Error>,
+        anyhow::Error: From<<Q as Source>::Error>,
     {
         Self::from_arcterm_quad_source(quads.map_quads(|q| {
             let (spo, g) = q.to_spog();
