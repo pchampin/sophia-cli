@@ -39,3 +39,23 @@ to install it directly in your path.
 ```
 
 TODO show how to do basic tasks with sop...
+
+## JSON-LD Document loader
+
+By default, the JSON-LD processor will only accept inline contexts.
+Two [document loaders](https://www.w3.org/TR/json-ld11-api/#remote-document-and-context-retrieval)
+are available via command-line options:
+
+* a local document loader (`--loader_local` or `-l`):
+  this option expects a path to a directory.
+  Every subdirectory `SUBDIR` of that path is interpreted as a local cache for the
+  `https://SUBDIR/` namespace.
+
+* a URL document loader (`--loader_url` or `-u`):
+  with this option, any HTTP(S) context IRI will be fetched from the Web.
+  This option is provided for convenience,
+  but is not fit for production as it presents
+  [security](https://www.w3.org/TR/json-ld11/#iana-security)
+  and [privacy](https://www.w3.org/TR/json-ld11/#privacy) issues.
+
+With both options, the local version will be used in priority.

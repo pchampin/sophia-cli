@@ -1,4 +1,4 @@
-use std::io::BufReader;
+use std::{io::BufReader, path::PathBuf, sync::Arc};
 
 use anyhow::{Error, Result};
 use sophia::{
@@ -37,14 +37,33 @@ pub struct Args {
     #[arg(short, long, value_parser = |txt: &str| Iri::new(txt.to_string()))]
     base: Option<Iri<String>>,
 
-    /// Process inline contexts only (as opposed to contexts referred by IRI).
-    ///
-    /// Only applies to JSON-LD.
-    #[arg(short, long)]
-    inline_contexts_only: bool,
+    #[command(flatten)]
+    options: ParserOptions,
 
     #[command(subcommand)]
     pipeline: Option<PipeSubcommand>,
+}
+
+/// Reusable serializer options
+#[derive(clap::Args, Clone, Debug)]
+pub struct ParserOptions {
+    /// Local cache for known contexts.
+    ///
+    /// Only applies to JSON-LD.
+    ///
+    /// Must be a directory, where subdirectories represent domains, a
+    #[arg(short = 'l', long, env = "DOCUMENT_LOADER_CACHE")]
+    loader_local: Option<PathBuf>,
+
+    /// Fetch unknown contexts.
+    ///
+    /// Only applies to JSON-LD.
+    ///
+    /// This is not the default behavior,
+    /// because fetching unknown contexts from the Web (or the filesystem) is usually not fit for production.
+    /// Consider using `loader_cache` instead.
+    #[arg(short = 'u', long)]
+    loader_urls: bool,
 }
 
 pub fn run(args: Args) -> Result<()> {
@@ -60,7 +79,7 @@ pub fn run(args: Args) -> Result<()> {
             let base = args
                 .base
                 .unwrap_or_else(|| Iri::new_unchecked("x-stdin://".into()));
-            parse_read(read, format, base, args.inline_contexts_only, handler)
+            parse_read(read, format, base, args.options, handler)
         }
         FileOrUrl::File(filename) => {
             let format = match args.format {
@@ -75,7 +94,7 @@ pub fn run(args: Args) -> Result<()> {
                 Some(b) => b,
                 None => filename_to_iri(&filename)?,
             };
-            parse_read(read, format, base, args.inline_contexts_only, handler)
+            parse_read(read, format, base, args.options, handler)
         }
         FileOrUrl::Url(url) => {
             let base = match args.base {
@@ -100,7 +119,7 @@ pub fn run(args: Args) -> Result<()> {
                     None => Err(Error::msg("Cannot guess format for URL {url}")),
                 }?,
             };
-            parse_read(resp, format, base, args.inline_contexts_only, handler)
+            parse_read(resp, format, base, args.options, handler)
         }
     }
 }
@@ -109,7 +128,7 @@ fn parse_read<R: std::io::Read>(
     read: R,
     format: Format,
     base: Iri<String>,
-    inline_contexts_only: bool,
+    options: ParserOptions,
     handler: QuadHandler,
 ) -> Result<()> {
     let bufread = BufReader::new(read);
@@ -125,22 +144,25 @@ fn parse_read<R: std::io::Read>(
             handler.handle_quads(QuadIter::from_quad_source(quads))
         }
         JsonLd => {
-            if inline_contexts_only {
+            if options.loader_urls {
                 let options = JsonLdOptions::new()
                     .with_base(base.map_unchecked(std::sync::Arc::from))
-                    .with_document_loader_closure(sophia::jsonld::loader::NoLoader::new);
+                    .with_document_loader_closure(|| {
+                        sophia::jsonld::loader::ChainLoader::new(
+                            make_fs_loader(options.loader_local.as_ref()),
+                            sophia::jsonld::loader::ChainLoader::new(
+                                sophia::jsonld::loader::FileUrlLoader::default(),
+                                sophia::jsonld::loader::HttpLoader::default(),
+                            ),
+                        )
+                    });
                 let parser = JsonLdParser::new_with_options(options);
                 let quads = QuadParser::parse(&parser, bufread);
                 handler.handle_quads(QuadIter::from_quad_source(quads))
             } else {
                 let options = JsonLdOptions::new()
                     .with_base(base.map_unchecked(std::sync::Arc::from))
-                    .with_document_loader_closure(|| {
-                        sophia::jsonld::loader::ChainLoader::new(
-                            sophia::jsonld::loader::FileUrlLoader::default(),
-                            sophia::jsonld::loader::HttpLoader::default(),
-                        )
-                    });
+                    .with_document_loader_closure(|| make_fs_loader(options.loader_local.as_ref()));
                 let parser = JsonLdParser::new_with_options(options);
                 let quads = QuadParser::parse(&parser, bufread);
                 handler.handle_quads(QuadIter::from_quad_source(quads))
@@ -178,6 +200,48 @@ fn filename_to_iri(filename: &str) -> Result<Iri<String>> {
     // TODO make this robust to Windows paths
     let path = std::path::absolute(filename)?;
     Ok(Iri::new(format!("file://{}", path.to_string_lossy()))?)
+}
+
+fn make_fs_loader(path: Option<&PathBuf>) -> sophia::jsonld::loader::FsLoader {
+    let mut ret = sophia::jsonld::loader::FsLoader::default();
+    let Some(path) = path else {
+        return ret;
+    };
+    if !path.exists() || !path.is_dir() {
+        return ret;
+    }
+
+    for res in path
+        .read_dir()
+        .expect("Can not read entries for `loader_local`")
+    {
+        match res {
+            Err(err) => log::warn!("loader_local entry: {err}"),
+            Ok(direntry) => {
+                let file_name = direntry.file_name();
+                let Some(filename) = file_name.to_str() else {
+                    log::debug!(
+                        "loader_local: skipping non UTF-8 filename {:?}",
+                        direntry.file_name()
+                    );
+                    continue;
+                };
+                let entry_path = direntry.path();
+                if !entry_path.is_dir() {
+                    log::debug!("loader_local: skipping non-dir {entry_path:?}");
+                    continue;
+                }
+                let iri_str: Arc<str> = format!("https://{filename}/").into();
+                let Ok(iri) = Iri::new(iri_str) else {
+                    log::warn!("loader_local: skipping non-IRI-friendly) {entry_path:?}/");
+                    continue;
+                };
+                log::trace!("loader_local: mounting https://{filename}/ to {entry_path:?}");
+                ret.mount(iri, entry_path);
+            }
+        }
+    }
+    ret
 }
 
 static ACCEPT: &str = "application/n-quads, application/n-triples, application/trig;q=0.9, text/turtle=q=0.9, application/ld+json;q=0.8, application/rdf+xml;q=0.7, */*;q=0.1";
