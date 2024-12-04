@@ -16,16 +16,23 @@ use sophia::{
 };
 
 use crate::common::{
-    file_or_url::FileOrUrl, format::*, pipe::PipeSubcommand, quad_handler::QuadHandler,
-    quad_iter::QuadIter,
+    file_or_url::FileOrUrl, files_or_url::FilesOrUrl, format::*, pipe::PipeSubcommand,
+    quad_handler::QuadHandler, quad_iter::QuadIter,
 };
 
 /// Parse data in an RDF concrete syntax into quads
 #[derive(clap::Args, Clone, Debug)]
 pub struct Args {
     /// File or URL (- for stdin)
-    #[arg(default_value = "-")]
-    file_or_url: FileOrUrl,
+    ///
+    /// To parse multiple files or URLs, use `--multiple` instead.
+    /// Otherwise, defaults to stdin.
+    #[arg(verbatim_doc_comment)]
+    file_or_url: Option<FileOrUrl>,
+
+    /// Multiple filenames, glob patterns or URLs, terminated with 'm-'
+    #[arg(short, long, num_args = 1.. , value_terminator = "m-", conflicts_with = "file_or_url")]
+    multiple: Vec<FilesOrUrl>,
 
     /// Format to parse
     #[arg(short, long)]
@@ -51,77 +58,96 @@ pub struct ParserOptions {
     ///
     /// Only applies to JSON-LD.
     ///
-    /// Must be a directory, where subdirectories represent domains, a
-    #[arg(short = 'l', long, env = "DOCUMENT_LOADER_CACHE")]
+    /// Every subdirectory SUBDIR of the given path is interpreted as a local cache
+    /// for the https://SUBDIR/ namespace.
+    #[arg(short = 'l', long, env = "DOCUMENT_LOADER_CACHE", verbatim_doc_comment)]
     loader_local: Option<PathBuf>,
 
     /// Fetch unknown contexts.
     ///
     /// Only applies to JSON-LD.
     ///
-    /// This is not the default behavior,
-    /// because fetching unknown contexts from the Web (or the filesystem) is usually not fit for production.
-    /// Consider using `loader_cache` instead.
-    #[arg(short = 'u', long)]
+    /// This is not the default behavior, because fetching unknown contexts from the
+    /// web (or the filesystem) is usually not fit for production.
+    /// Consider using `--loader_cache` instead.
+    #[arg(short = 'u', long, verbatim_doc_comment)]
     loader_urls: bool,
 }
 
-pub fn run(args: Args) -> Result<()> {
+pub fn run(mut args: Args) -> Result<()> {
     log::trace!("parse args: {args:#?}");
-    let handler = QuadHandler::new(args.pipeline);
-    match args.file_or_url {
-        FileOrUrl::StdIn => {
-            let format = match args.format {
-                Some(f) => f,
-                None => Err(Error::msg("Cannot guess format for stdin"))?,
-            };
-            let read = std::io::stdin();
-            let base = args
-                .base
-                .unwrap_or_else(|| Iri::new_unchecked("x-stdin://".into()));
-            parse_read(read, format, base, args.options, handler)
+    let handler = QuadHandler::new(args.pipeline.take());
+    if args.multiple.is_empty() {
+        match args.file_or_url.take().unwrap_or(FileOrUrl::StdIn) {
+            FileOrUrl::StdIn => parse_stdin(args, handler),
+            FileOrUrl::File(filename) => parse_file(args, filename, handler),
+            FileOrUrl::Url(url) => parse_url(args, url, handler),
         }
-        FileOrUrl::File(filename) => {
-            let format = match args.format {
-                Some(f) => f,
-                None => match filename.rsplit(".").next() {
-                    Some(ext) => ext.parse(),
-                    None => Err(Error::msg("Cannot guess format for file {filename}")),
-                }?,
-            };
-            let read = std::fs::File::open(&filename)?;
-            let base = match args.base {
-                Some(b) => b,
-                None => filename_to_iri(&filename)?,
-            };
-            parse_read(read, format, base, args.options, handler)
-        }
-        FileOrUrl::Url(url) => {
-            let base = match args.base {
-                Some(b) => b,
-                None => Iri::new_unchecked(url.clone().to_string()),
-            };
-            let client = reqwest::blocking::Client::new();
-            let resp = client
-                .get(url)
-                .header("accept", ACCEPT)
-                .send()?
-                .error_for_status()?;
-            let format = match args.format {
-                Some(f) => f,
-                None => match resp
-                    .headers()
-                    .get("content-type")
-                    .and_then(|val| val.to_str().ok())
-                    .and_then(|txt| txt.split(";").next())
-                {
-                    Some(ctype) => ctype.parse(),
-                    None => Err(Error::msg("Cannot guess format for URL {url}")),
-                }?,
-            };
-            parse_read(resp, format, base, args.options, handler)
-        }
+    } else {
+        todo!()
     }
+}
+
+fn parse_stdin(args: Args, handler: QuadHandler) -> std::result::Result<(), Error> {
+    let format = match args.format {
+        Some(f) => f,
+        None => Err(Error::msg("Cannot guess format for stdin"))?,
+    };
+    let read = std::io::stdin();
+    let base = args
+        .base
+        .unwrap_or_else(|| Iri::new_unchecked("x-stdin://".into()));
+    parse_read(read, format, base, args.options, handler)
+}
+
+fn parse_file(
+    args: Args,
+    filename: String,
+    handler: QuadHandler,
+) -> std::result::Result<(), Error> {
+    let format = match args.format {
+        Some(f) => f,
+        None => match filename.rsplit(".").next() {
+            Some(ext) => ext.parse(),
+            None => Err(Error::msg("Cannot guess format for file {filename}")),
+        }?,
+    };
+    let read = std::fs::File::open(&filename)?;
+    let base = match args.base {
+        Some(b) => b,
+        None => filename_to_iri(&filename)?,
+    };
+    parse_read(read, format, base, args.options, handler)
+}
+
+fn parse_url(
+    args: Args,
+    url: reqwest::Url,
+    handler: QuadHandler,
+) -> std::result::Result<(), Error> {
+    let base = match args.base {
+        Some(b) => b,
+        None => Iri::new_unchecked(url.clone().to_string()),
+    };
+    let client = reqwest::blocking::Client::new();
+    let resp = client
+        .get(url)
+        .header("accept", ACCEPT)
+        .send()?
+        .error_for_status()?;
+    let format = match args.format {
+        Some(f) => f,
+        None => match resp
+            .headers()
+            .get("content-type")
+            .and_then(|val| val.to_str().ok())
+            .and_then(|txt| txt.split(";").next())
+        {
+            Some(ctype) => ctype.parse(),
+            None => Err(Error::msg("Cannot guess format for URL {url}")),
+        }?,
+    };
+    parse_read(resp, format, base, args.options, handler)
 }
 
 fn parse_read<R: std::io::Read>(
