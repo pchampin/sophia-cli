@@ -227,10 +227,6 @@ fn make_fs_loader(path: Option<&PathBuf>) -> sophia::jsonld::loader::FsLoader {
                     continue;
                 };
                 let entry_path = direntry.path();
-                if !entry_path.is_dir() {
-                    log::debug!("loader_local: skipping non-dir {entry_path:?}");
-                    continue;
-                }
                 let iri_str: Arc<str> = format!("https://{filename}/").into();
                 let Ok(iri) = Iri::new(iri_str) else {
                     log::warn!("loader_local: skipping non-IRI-friendly) {entry_path:?}/");

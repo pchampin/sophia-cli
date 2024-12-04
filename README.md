@@ -48,8 +48,8 @@ are available via command-line options:
 
 * a local document loader (`--loader_local` or `-l`):
   this option expects a path to a directory.
-  Every subdirectory `SUBDIR` of that path is interpreted as a local cache for the
-  `https://SUBDIR/` namespace.
+  Every file or subdirectory `ITEM` of that path is interpreted as a local cache for the
+  `https://ITEM/` namespace.
 
 * a URL document loader (`--loader_url` or `-u`):
   with this option, any HTTP(S) context IRI will be fetched from the Web.
