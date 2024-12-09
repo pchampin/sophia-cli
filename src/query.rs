@@ -69,7 +69,7 @@ fn handle_bindings(bindings: Bindings<FastDataset>, args: Args) -> Result<()> {
         )))
     } else {
         if !args.no_headers {
-            println!("{}", vars.join("\t"));
+            println!("?{}", vars.join("\t?"));
         }
 
         let mut seps = vec!["\t"; vars.len()];
