@@ -63,7 +63,7 @@ impl<'a> std::ops::Deref for QuadIter<'a> {
     }
 }
 
-impl<'a> std::ops::DerefMut for QuadIter<'a> {
+impl std::ops::DerefMut for QuadIter<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
