@@ -1,7 +1,7 @@
-use std::{iter::once, path::PathBuf, sync::LazyLock};
+use std::{mem::take, path::PathBuf, sync::LazyLock};
 
 use anyhow::{Error, Result};
-use glob::Pattern;
+use glob::{GlobError, Paths, Pattern};
 use regex::Regex;
 use reqwest::Url;
 
@@ -45,32 +45,78 @@ impl std::fmt::Display for FilesOrUrl {
 impl IntoIterator for FilesOrUrl {
     type Item = PathOrUrl;
 
-    type IntoIter = Box<dyn Iterator<Item = PathOrUrl>>;
+    type IntoIter = IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            FilesOrUrl::File(filename) => Box::new(once(PathOrUrl::Path(filename.into()))),
+            FilesOrUrl::File(filename) => IntoIter::File(filename.into()),
             FilesOrUrl::Glob(pattern) => {
                 let mut paths = glob::glob(pattern.as_str()).expect("pattern is valid");
                 match paths.next() {
                     None => {
                         log::warn!("Pattern '{}' matches no file", pattern.as_str());
-                        Box::new(std::iter::empty())
+                        IntoIter::End
                     }
-                    Some(first) => Box::new(once(first).chain(paths).filter_map(
-                        |res| -> Option<PathOrUrl> {
-                            match res {
-                                Err(err) => {
-                                    log::warn!("GlobError: {err}");
-                                    None
-                                }
-                                Ok(path) => Some(PathOrUrl::Path(path)),
-                            }
-                        },
-                    )),
+                    Some(first) => IntoIter::GlobFirst(first, paths),
                 }
             }
-            FilesOrUrl::Url(url) => Box::new(once(PathOrUrl::Url(url))),
+            FilesOrUrl::Url(url) => IntoIter::Url(url),
+        }
+    }
+}
+
+pub enum IntoIter {
+    End,
+    File(PathBuf),
+    GlobFirst(Result<PathBuf, GlobError>, Paths),
+    GlobRest(Paths),
+    Url(Url),
+}
+
+impl Default for IntoIter {
+    fn default() -> Self {
+        Self::End
+    }
+}
+
+impl Iterator for IntoIter {
+    type Item = PathOrUrl;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::End => None,
+            Self::File(_) => {
+                let Self::File(path) = take(self) else {
+                    unreachable!()
+                };
+                Some(PathOrUrl::Path(path))
+            }
+            Self::GlobFirst(..) => {
+                let Self::GlobFirst(first, rest) = take(self) else {
+                    unreachable!()
+                };
+                *self = Self::GlobRest(rest);
+                match first {
+                    Ok(first) => Some(PathOrUrl::Path(first)),
+                    Err(err) => {
+                        log::warn!("{err}");
+                        self.next()
+                    }
+                }
+            }
+            Self::GlobRest(rest) => match rest.next()? {
+                Ok(path) => Some(PathOrUrl::Path(path)),
+                Err(err) => {
+                    log::warn!("{err}");
+                    self.next()
+                }
+            },
+            Self::Url(_) => {
+                let Self::Url(url) = take(self) else {
+                    unreachable!()
+                };
+                Some(PathOrUrl::Url(url))
+            }
         }
     }
 }

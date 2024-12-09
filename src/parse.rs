@@ -93,25 +93,23 @@ pub fn run(mut args: Args) -> Result<()> {
             FileOrUrl::Url(url) => parse_url(args, url, handler),
         }
     } else {
-        let sources: Vec<_> = args
-            .multiple
-            .drain(..)
-            .flat_map(FilesOrUrl::into_iter)
-            .collect();
-        log::debug!("{} sources", sources.len());
         let (tx, rx) = std::sync::mpsc::channel();
         let sink_thread =
             std::thread::spawn(|| handler.handle_quads(QuadIter::new(rx.into_iter())));
-        sources.into_par_iter().for_each(|path_or_url| {
-            log::debug!("{path_or_url:?}");
-            let handler = QuadHandler::Sender(&tx);
-            if let Err(err) = match path_or_url {
-                PathOrUrl::Path(path_buf) => parse_file(args.clone(), &path_buf, handler),
-                PathOrUrl::Url(url) => parse_url(args.clone(), url, handler),
-            } {
-                log::error!("{err}");
-            }
-        });
+        std::mem::take(&mut args.multiple)
+            .into_iter()
+            .flat_map(FilesOrUrl::into_iter)
+            .par_bridge()
+            .for_each(|path_or_url| {
+                log::debug!("{path_or_url:?}");
+                let handler = QuadHandler::Sender(&tx);
+                if let Err(err) = match path_or_url {
+                    PathOrUrl::Path(path_buf) => parse_file(args.clone(), &path_buf, handler),
+                    PathOrUrl::Url(url) => parse_url(args.clone(), url, handler),
+                } {
+                    log::error!("{err}");
+                }
+            });
         drop(tx); // hang up the channel, so that sink_thread stops after empying it
         sink_thread.join().unwrap()
     }
