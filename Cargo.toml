@@ -20,7 +20,7 @@ version = "0.9.0"
 features = ["file_url", "http_client", "jsonld", "sparql", "xml"]
 # path = "../sophia_rs/sophia"
 git = "https://github.com/pchampin/sophia_rs.git"
-rev = "bfa1f37"
+rev = "268f677"
 
 [[bin]]
 name = "sop"
