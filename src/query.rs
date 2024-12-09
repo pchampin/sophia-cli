@@ -27,9 +27,9 @@ pub struct Args {
     #[arg()]
     query: String,
 
-    /// Output column headers (variable names) for bindings (ignored if query is not SELECT)
-    #[arg(short, long)]
-    column_headers: bool,
+    /// No not output column headers (variable names) for bindings (ignored if query is not SELECT)
+    #[arg(short = 'H', long)]
+    no_headers: bool,
 
     /// Exit with an error status if boolean result is `false` (ignored if query is not ASK)
     #[arg(short, long)]
@@ -66,7 +66,7 @@ fn handle_bindings(bindings: Bindings<FastDataset>, args: Args) -> Result<()> {
             },
         )))
     } else {
-        if args.column_headers {
+        if !args.no_headers {
             println!("{}", vars.join("\t"));
         }
 
