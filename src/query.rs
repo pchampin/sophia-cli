@@ -1,9 +1,11 @@
 use anyhow::{bail, Context, Result};
 use sophia::{
     api::{
+        ns::xsd,
         quad::Spog,
         source::QuadSource,
         sparql::{SparqlDataset, SparqlResult},
+        term::Term,
     },
     inmem::{dataset::FastDataset, index::TermIndexFullError},
     sparql::{Bindings, ResultTerm, SparqlWrapper},
@@ -76,13 +78,28 @@ fn handle_bindings(bindings: Bindings<FastDataset>, args: Args) -> Result<()> {
         for res in bindings {
             for (opt, sep) in res?.into_iter().zip(&seps) {
                 if let Some(value) = opt {
-                    print!("{value}");
+                    pretty_print(value);
                 }
                 print!("{sep}");
             }
         }
         Ok(())
     }
+}
+
+fn pretty_print(term: ResultTerm) {
+    if let Some(dt) = term.datatype() {
+        let lex = term.lexical_form().unwrap();
+        if xsd::string == dt {
+            print!("{lex:?}");
+            return;
+        }
+        if xsd::boolean == dt || xsd::decimal == dt || xsd::double == dt || xsd::integer == dt {
+            print!("{lex}");
+            return;
+        }
+    }
+    print!("{term}");
 }
 
 fn handle_boolean(response: bool, args: Args) -> Result<()> {
