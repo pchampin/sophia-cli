@@ -1,6 +1,11 @@
-use std::{io::BufReader, path::PathBuf, sync::Arc};
+use std::{
+    io::BufReader,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::{Error, Result};
+use rayon::prelude::*;
 use sophia::{
     api::{
         parser::{QuadParser, TripleParser},
@@ -16,8 +21,12 @@ use sophia::{
 };
 
 use crate::common::{
-    file_or_url::FileOrUrl, files_or_url::FilesOrUrl, format::*, pipe::PipeSubcommand,
-    quad_handler::QuadHandler, quad_iter::QuadIter,
+    file_or_url::FileOrUrl,
+    files_or_url::{FilesOrUrl, PathOrUrl},
+    format::*,
+    pipe::PipeSubcommand,
+    quad_handler::QuadHandler,
+    quad_iter::QuadIter,
 };
 
 /// Parse data in an RDF concrete syntax into quads
@@ -80,11 +89,31 @@ pub fn run(mut args: Args) -> Result<()> {
     if args.multiple.is_empty() {
         match args.file_or_url.take().unwrap_or(FileOrUrl::StdIn) {
             FileOrUrl::StdIn => parse_stdin(args, handler),
-            FileOrUrl::File(filename) => parse_file(args, filename, handler),
+            FileOrUrl::File(filename) => parse_file(args, &PathBuf::from(filename), handler),
             FileOrUrl::Url(url) => parse_url(args, url, handler),
         }
     } else {
-        todo!()
+        let sources: Vec<_> = args
+            .multiple
+            .drain(..)
+            .flat_map(FilesOrUrl::into_iter)
+            .collect();
+        log::debug!("{} sources", sources.len());
+        let (tx, rx) = std::sync::mpsc::channel();
+        let sink_thread =
+            std::thread::spawn(|| handler.handle_quads(QuadIter::new(rx.into_iter())));
+        sources.into_par_iter().for_each(|path_or_url| {
+            log::debug!("{path_or_url:?}");
+            let handler = QuadHandler::Sender(&tx);
+            if let Err(err) = match path_or_url {
+                PathOrUrl::Path(path_buf) => parse_file(args.clone(), &path_buf, handler),
+                PathOrUrl::Url(url) => parse_url(args.clone(), url, handler),
+            } {
+                log::error!("{err}");
+            }
+        });
+        drop(tx); // hang up the channel, so that sink_thread stops after empying it
+        sink_thread.join().unwrap()
     }
 }
 
@@ -100,22 +129,18 @@ fn parse_stdin(args: Args, handler: QuadHandler) -> std::result::Result<(), Erro
     parse_read(read, format, base, args.options, handler)
 }
 
-fn parse_file(
-    args: Args,
-    filename: String,
-    handler: QuadHandler,
-) -> std::result::Result<(), Error> {
+fn parse_file(args: Args, filename: &Path, handler: QuadHandler) -> std::result::Result<(), Error> {
     let format = match args.format {
         Some(f) => f,
-        None => match filename.rsplit(".").next() {
+        None => match filename.to_string_lossy().rsplit(".").next() {
             Some(ext) => ext.parse(),
             None => Err(Error::msg("Cannot guess format for file {filename}")),
         }?,
     };
-    let read = std::fs::File::open(&filename)?;
+    let read = std::fs::File::open(filename)?;
     let base = match args.base {
         Some(b) => b,
-        None => filename_to_iri(&filename)?,
+        None => filename_to_iri(filename)?,
     };
     parse_read(read, format, base, args.options, handler)
 }
@@ -222,10 +247,10 @@ fn parse_read<R: std::io::Read>(
     }
 }
 
-fn filename_to_iri(filename: &str) -> Result<Iri<String>> {
+fn filename_to_iri(filename: &Path) -> Result<Iri<String>> {
     // TODO make this robust to Windows paths
-    let path = std::path::absolute(filename)?;
-    Ok(Iri::new(format!("file://{}", path.to_string_lossy()))?)
+    let abs = std::path::absolute(filename)?;
+    Ok(Iri::new(format!("file://{}", abs.to_string_lossy()))?)
 }
 
 fn make_fs_loader(path: Option<&PathBuf>) -> sophia::jsonld::loader::FsLoader {

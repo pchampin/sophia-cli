@@ -9,14 +9,15 @@ use sophia::{
     turtle::serializer::nt::write_term,
 };
 
-use super::quad_iter::QuadIter;
+use super::quad_iter::{QuadIter, QuadIterItem};
 
-pub enum QuadHandler {
+pub enum QuadHandler<'a> {
     Stdout,
     Pipeline(crate::SinkSubcommand),
+    Sender(&'a std::sync::mpsc::Sender<QuadIterItem>),
 }
 
-impl QuadHandler {
+impl QuadHandler<'_> {
     pub fn new(pipeline: Option<crate::common::pipe::PipeSubcommand>) -> Self {
         match pipeline {
             None => Self::Stdout,
@@ -44,6 +45,12 @@ impl QuadHandler {
                 Ok(())
             }
             QuadHandler::Pipeline(sink) => sink.handle_quads(quads),
+            QuadHandler::Sender(tx) => {
+                quads
+                    .as_iter()
+                    .for_each(|i| tx.send(i).map_err(|err| log::warn!("{err}")).unwrap());
+                Ok(())
+            }
         }
     }
 }

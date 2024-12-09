@@ -1,4 +1,4 @@
-use std::sync::LazyLock;
+use std::{iter::once, path::PathBuf, sync::LazyLock};
 
 use anyhow::{Error, Result};
 use glob::Pattern;
@@ -40,4 +40,43 @@ impl std::fmt::Display for FilesOrUrl {
         };
         txt.fmt(f)
     }
+}
+
+impl IntoIterator for FilesOrUrl {
+    type Item = PathOrUrl;
+
+    type IntoIter = Box<dyn Iterator<Item = PathOrUrl>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            FilesOrUrl::File(filename) => Box::new(once(PathOrUrl::Path(filename.into()))),
+            FilesOrUrl::Glob(pattern) => {
+                let mut paths = glob::glob(pattern.as_str()).expect("pattern is valid");
+                match paths.next() {
+                    None => {
+                        log::warn!("Pattern '{}' matches no file", pattern.as_str());
+                        Box::new(std::iter::empty())
+                    }
+                    Some(first) => Box::new(once(first).chain(paths).filter_map(
+                        |res| -> Option<PathOrUrl> {
+                            match res {
+                                Err(err) => {
+                                    log::warn!("GlobError: {err}");
+                                    None
+                                }
+                                Ok(path) => Some(PathOrUrl::Path(path)),
+                            }
+                        },
+                    )),
+                }
+            }
+            FilesOrUrl::Url(url) => Box::new(once(PathOrUrl::Url(url))),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum PathOrUrl {
+    Path(PathBuf),
+    Url(Url),
 }
