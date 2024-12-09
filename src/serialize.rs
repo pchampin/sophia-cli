@@ -63,7 +63,8 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, args: Args, write: W) -> Re
             todo!()
         }
         Format::JsonLd => {
-            let options = JsonLdOptions::new().with_spaces(2);
+            let indent = if args.options.no_pretty { 0 } else { 2 };
+            let options = JsonLdOptions::new().with_spaces(indent);
             let ser = JsonLdSerializer::new_with_options(out, options);
             serialize_quads(quads, ser)
         }
