@@ -67,12 +67,12 @@ pub struct ParserOptions {
     ///
     /// Only applies to JSON-LD.
     ///
-    /// Every subdirectory SUBDIR of the given path is interpreted as a local cache
-    /// for the https://SUBDIR/ namespace.
+    /// Every file or subdirectory `ITEM` of that path is interpreted as a local
+    /// cache for the `https://ITEM/` namespace.
     #[arg(short = 'l', long, env = "DOCUMENT_LOADER_CACHE", verbatim_doc_comment)]
     loader_local: Option<PathBuf>,
 
-    /// Fetch unknown contexts from URL.
+    /// Fetch unknown context IRIs as URLs.
     ///
     /// Only applies to JSON-LD.
     ///

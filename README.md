@@ -52,7 +52,8 @@ are available via command-line options:
   `https://ITEM/` namespace.
 
 * a URL document loader (`--loader_url` or `-u`):
-  with this option, any HTTP(S) context IRI will be fetched from the Web.
+  with this option, any context IRI will be fetched
+  (from the Web or from the filesystem, depending).
   This option is provided for convenience,
   but is not fit for production as it presents
   [security](https://www.w3.org/TR/json-ld11/#iana-security)
