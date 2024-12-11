@@ -72,13 +72,13 @@ pub struct ParserOptions {
     #[arg(short = 'l', long, env = "DOCUMENT_LOADER_CACHE", verbatim_doc_comment)]
     loader_local: Option<PathBuf>,
 
-    /// Fetch unknown contexts.
+    /// Fetch unknown contexts from URL.
     ///
     /// Only applies to JSON-LD.
     ///
     /// This is not the default behavior, because fetching unknown contexts from the
     /// web (or the filesystem) is usually not fit for production.
-    /// Consider using `--loader_cache` instead.
+    /// Consider using `--loader-local` instead.
     #[arg(short = 'u', long, verbatim_doc_comment)]
     loader_urls: bool,
 }
