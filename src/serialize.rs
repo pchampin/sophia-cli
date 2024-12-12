@@ -43,8 +43,10 @@ pub struct Args {
 /// Reusable serializer options
 #[derive(clap::Args, Clone, Debug)]
 pub struct SerializerOptions {
-    /// Disable pretty-printing (available for RDF/XML, Turtle, TriG)
-    #[arg(short = 'P', long)]
+    /// Disable pretty-printing
+    ///
+    /// Available for for JSON-LD, RDF/XML, Turtle, TriG.
+    #[arg(short = 'P', long, verbatim_doc_comment)]
     no_pretty: bool,
 }
 

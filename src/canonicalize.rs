@@ -24,12 +24,10 @@ use hash_function::*;
 #[derive(clap::Args, Clone, Debug)]
 pub struct Args {
     /// File to serialize into [default: standard output]
-    ///
-    /// Cannot be used with a pipeline.
     #[arg(short, long)]
     output: Option<String>,
 
-    /// C14n function to use (supported: RDFC-1.0)
+    /// Canonicalization function to use (supported: RDFC-1.0)
     #[arg(
         short,
         long,
@@ -38,14 +36,18 @@ pub struct Args {
     )]
     function: C14nFunction,
 
-    /// Hash function to use (supported: SHA-256, SHA-384).
+    /// Hash function to use (supported: SHA-256, SHA-384)
     ///
-    /// Default depends on c14n function; some c14n function may not support all hash function.
-    #[arg(short = 'H', long)]
+    /// Default depends on c14n function; some c14n function may not support
+    /// all hash functions.
+    #[arg(short = 'H', long, verbatim_doc_comment)]
     hash_function: Option<HashFunctionId>,
 
-    /// Higher value means that the c14n will stop earlier when complex graphs are encountered.
-    #[arg(short, long, default_value_t = FiniteNonNegativeF64(1.0))]
+    /// Resistance to "poison graphs"
+    ///
+    /// Higher value means that the c14n will stop earlier when complex
+    /// graphs are encountered.
+    #[arg(short, long, default_value_t = FiniteNonNegativeF64(1.0), verbatim_doc_comment)]
     poison_resistance: FiniteNonNegativeF64,
 }
 

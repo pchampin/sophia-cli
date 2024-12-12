@@ -47,10 +47,13 @@ pub struct Args {
     #[arg(short, long)]
     format: Option<Format>,
 
-    /// Base IRI against which relative IRIs will be resolve [default: FILE_OR_URL].
+    /// Base IRI against which relative IRIs will be resolve
+    ///
+    /// If omitted, defaults to the filename/URL from which the data was
+    /// loaded.
     ///
     /// Does not apply to N-Quands, N-Triples or Generalized N-Quads.
-    #[arg(short, long, value_parser = |txt: &str| Iri::new(txt.to_string()))]
+    #[arg(short, long, value_parser = |txt: &str| Iri::new(txt.to_string()), verbatim_doc_comment)]
     base: Option<Iri<String>>,
 
     #[command(flatten)]
@@ -67,17 +70,23 @@ pub struct ParserOptions {
     ///
     /// Only applies to JSON-LD.
     ///
-    /// Every file or subdirectory `ITEM` of that path is interpreted as a local
-    /// cache for the `https://ITEM/` namespace.
-    #[arg(short = 'l', long, env = "DOCUMENT_LOADER_CACHE", verbatim_doc_comment)]
+    /// Every file or subdirectory `ITEM` of that directory is interpreted as
+    /// a local cache for the `https://ITEM/` namespace.
+    #[arg(
+        short = 'l',
+        long,
+        id = "DIR",
+        env = "DOCUMENT_LOADER_CACHE",
+        verbatim_doc_comment
+    )]
     loader_local: Option<PathBuf>,
 
     /// Fetch unknown context IRIs as URLs.
     ///
     /// Only applies to JSON-LD.
     ///
-    /// This is not the default behavior, because fetching unknown contexts from the
-    /// web (or the filesystem) is usually not fit for production.
+    /// This is not the default behavior, because fetching unknown contexts
+    /// from the web (or the filesystem) is usually not fit for production.
     /// Consider using `--loader-local` instead.
     #[arg(short = 'u', long, verbatim_doc_comment)]
     loader_urls: bool,

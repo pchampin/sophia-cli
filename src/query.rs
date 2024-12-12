@@ -18,23 +18,29 @@ use crate::common::{
     quad_iter::{QuadIter, QuadIterError},
 };
 
-/// Execute a SPARQL query against the quads.
+/// Execute a SPARQL query against the quads
 ///
 /// The result can be piped to subcommands if
 /// - the query is a CONSTRUCT or a DESCRIBED query, or
 /// - the query is a SELECT query with variables ?s, ?p, ?o and (optionally) ?g.
 #[derive(clap::Args, Clone, Debug)]
+#[command(verbatim_doc_comment)]
 pub struct Args {
     /// SPARQL query
     #[arg()]
     query: String,
 
-    /// No not output column headers (variable names) for bindings (ignored if query is not SELECT)
+    /// No not output column headers (variable names) for bindings
+    ///
+    /// This flag is ignored if query is not SELECT.
     #[arg(short = 'H', long)]
     no_headers: bool,
 
-    /// Exit with an error status if boolean result is `false` (ignored if query is not ASK)
-    #[arg(short, long)]
+    /// Exit with an error status if boolean result is `false` (ASK only)
+    ///
+    /// The result of the query will also not be printed to the output.
+    /// This flag is ignored if query is not ASK.
+    #[arg(short, long, verbatim_doc_comment)]
     status: bool,
 
     #[command(subcommand)]
