@@ -5,16 +5,23 @@ use std::io::Write;
 
 use anyhow::Result;
 use sophia::{
-    api::{quad::Quad, source::QuadSource},
+    api::{
+        quad::{Quad, Spog},
+        source::QuadSource,
+    },
+    term::ArcTerm,
     turtle::serializer::nt::write_term,
 };
 
-use super::quad_iter::{QuadIter, QuadIterItem};
+use super::quad_iter::QuadIter;
 
 pub enum QuadHandler<'a> {
     Stdout,
     Pipeline(crate::SinkSubcommand),
-    Sender(&'a std::sync::mpsc::Sender<QuadIterItem>),
+    Sender {
+        name: String,
+        tx: &'a std::sync::mpsc::Sender<Spog<ArcTerm>>,
+    },
 }
 
 impl QuadHandler<'_> {
@@ -45,9 +52,12 @@ impl QuadHandler<'_> {
                 Ok(())
             }
             QuadHandler::Pipeline(sink) => sink.handle_quads(quads),
-            QuadHandler::Sender(tx) => {
+            QuadHandler::Sender { name, tx } => {
                 quads
                     .as_iter()
+                    .map(|i| i.map_err(|err| log::warn!("{name}: {err}")))
+                    .take_while(Result::is_ok) // prevent looping on the same error, which some parsers do
+                    .map(Result::unwrap)
                     .for_each(|i| tx.send(i).map_err(|err| log::warn!("{err}")).unwrap());
                 Ok(())
             }

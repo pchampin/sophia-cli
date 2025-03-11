@@ -26,7 +26,7 @@ use crate::common::{
     format::*,
     pipe::PipeSubcommand,
     quad_handler::QuadHandler,
-    quad_iter::QuadIter,
+    quad_iter::{QuadIter, QuadIterItem},
 };
 
 /// Parse data in an RDF concrete syntax into quads
@@ -103,15 +103,19 @@ pub fn run(mut args: Args) -> Result<()> {
         }
     } else {
         let (tx, rx) = std::sync::mpsc::channel();
-        let sink_thread =
-            std::thread::spawn(|| handler.handle_quads(QuadIter::new(rx.into_iter())));
+        let sink_thread = std::thread::spawn(|| {
+            handler.handle_quads(QuadIter::new(rx.into_iter().map(QuadIterItem::Ok)))
+        });
         std::mem::take(&mut args.multiple)
             .into_iter()
             .flat_map(FilesOrUrl::into_iter)
             .par_bridge()
             .for_each(|path_or_url| {
                 log::debug!("{path_or_url:?}");
-                let handler = QuadHandler::Sender(&tx);
+                let handler = QuadHandler::Sender {
+                    name: path_or_url.to_string(),
+                    tx: &tx,
+                };
                 if let Err(err) = match path_or_url {
                     PathOrUrl::Path(path_buf) => parse_file(args.clone(), &path_buf, handler),
                     PathOrUrl::Url(url) => parse_url(args.clone(), url, handler),

@@ -1,4 +1,4 @@
-use std::{mem::take, path::PathBuf, sync::LazyLock};
+use std::{fmt::Display, mem::take, path::PathBuf, sync::LazyLock};
 
 use anyhow::{Error, Result};
 use glob::{GlobError, Paths, Pattern};
@@ -125,4 +125,13 @@ impl Iterator for IntoIter {
 pub enum PathOrUrl {
     Path(PathBuf),
     Url(Url),
+}
+
+impl Display for PathOrUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PathOrUrl::Path(path_buf) => path_buf.to_string_lossy().fmt(f),
+            PathOrUrl::Url(url) => url.fmt(f),
+        }
+    }
 }
