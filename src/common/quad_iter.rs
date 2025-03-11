@@ -21,7 +21,7 @@ impl<'a> QuadIter<'a> {
 
     pub fn from_arcterm_quad_source<Q>(quads: Q) -> Self
     where
-        Q: for<'x> QuadSource<Quad<'x> = Spog<ArcTerm>> + 'a,
+        Q: for<'x> QuadSource<Item<'x> = Spog<ArcTerm>> + 'a,
         anyhow::Error: From<<Q as Source>::Error>,
     {
         Self::new(
