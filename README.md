@@ -32,13 +32,32 @@ cargo install --path .
 ```
 to install it directly in your path.
 
+### With Homebrew
+
+See https://github.com/ktk/homebrew-sop (thanks to @ktk).
+
+
 ## Quick start
 
+Convert an RDF/XML file in turle:
 ```
-./sop --help
+sop parse file.rdf ! serialize ttl -o file.ttl
 ```
 
-TODO show how to do basic tasks with sop...
+Run a SPARQL query over a file (**caveat**: SPARQL support is *very* partial at the moment)
+```
+sop parse file.jsonld ! query 'SELECT ?t { [] a ?t }'
+```
+
+Remove all language strings that are not in english, and serialize back to turtle
+```
+sop parse -f ttl ! filter 'coalesce(langMatches(lang(?o), "en"), true)' ! serialize ttl
+```
+
+Produce the canonical version of a turtle file, using a fixed base IRI
+```
+sop parse file.ttl --base x-dummy-base: ! canonicalize -o file.c14n.nq
+```
 
 ## JSON-LD Document loader
 
