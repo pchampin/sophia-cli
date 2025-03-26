@@ -44,7 +44,7 @@ Check that a file is valid RDF/XML
 sop parse file.rdf ! Z
 ```
 
-Convert an RDF/XML file in turle:
+Convert an RDF/XML file in turtle:
 ```
 sop parse file.rdf ! serialize ttl -o file.ttl
 ```

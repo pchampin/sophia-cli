@@ -6,6 +6,7 @@ use std::{
 use anyhow::{Context, Result};
 use sophia::{
     api::{
+        prefix::PrefixMapPair,
         quad::Quad,
         serializer::{QuadSerializer, TripleSerializer},
         source::{
@@ -23,7 +24,7 @@ use sophia::{
     xml::serializer::{RdfXmlConfig, RdfXmlSerializer},
 };
 
-use crate::common::{format::Format, quad_iter::QuadIter};
+use crate::common::{format::Format, prefix_map::parse_prefix_map, quad_iter::QuadIter};
 
 /// Serialize quads to an RDF concrete syntax
 #[derive(clap::Args, Clone, Debug)]
@@ -43,12 +44,20 @@ pub struct Args {
 /// Reusable serializer options
 #[derive(clap::Args, Clone, Debug)]
 pub struct SerializerOptions {
+    /// Prefix map expressed as PREFIX:URI,PREFIX:URI,...
+    ///
+    /// Available for Turtle, TriG.
+    #[arg(short, long, value_parser=parse_prefix_map, verbatim_doc_comment)]
+    prefixes: Option<PrefixMap>,
+
     /// Disable pretty-printing
     ///
-    /// Available for for JSON-LD, RDF/XML, Turtle, TriG.
+    /// Available for JSON-LD, RDF/XML, Turtle, TriG.
     #[arg(short = 'P', long, verbatim_doc_comment)]
     no_pretty: bool,
 }
+
+type PrefixMap = Vec<PrefixMapPair>;
 
 pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
     log::trace!("serialize args: {args:#?}");
@@ -58,7 +67,7 @@ pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
     }
 }
 
-pub fn serialize_to_write<W: Write>(quads: QuadIter, args: Args, write: W) -> Result<()> {
+pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -> Result<()> {
     let out = std::io::BufWriter::new(write);
     match args.format {
         Format::GeneralizedTriG => {
@@ -85,12 +94,22 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, args: Args, write: W) -> Re
             serialize_triples(quads, ser)
         }
         Format::TriG => {
-            let config = TrigConfig::new().with_pretty(!args.options.no_pretty);
+            let mut config = TrigConfig::new().with_pretty(!args.options.no_pretty);
+            if let Some(prefixes) = args.options.prefixes.take() {
+                let mut prefix_map = TrigConfig::default_prefix_map();
+                prefix_map.extend(prefixes);
+                config = config.with_own_prefix_map(prefix_map);
+            }
             let ser = TrigSerializer::new_with_config(out, config);
             serialize_quads(quads, ser)
         }
         Format::Turtle => {
-            let config = TurtleConfig::new().with_pretty(!args.options.no_pretty);
+            let mut config = TurtleConfig::new().with_pretty(!args.options.no_pretty);
+            if let Some(prefixes) = args.options.prefixes.take() {
+                let mut prefix_map = TurtleConfig::default_prefix_map();
+                prefix_map.extend(prefixes);
+                config = config.with_own_prefix_map(prefix_map);
+            }
             let ser = TurtleSerializer::new_with_config(out, config);
             serialize_triples(quads, ser)
         }
