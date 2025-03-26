@@ -74,6 +74,17 @@ impl std::ops::DerefMut for QuadIter<'_> {
 /// The type of items that [`QuadIter`] yields.
 pub type QuadIterItem = Result<Spog<ArcTerm>, QuadIterError>;
 
+/// Build a [`QuadIterItem`] from any (quad, error) result.
+pub fn quad_iter_item<T: Quad, E: Into<anyhow::Error>>(res: Result<T, E>) -> QuadIterItem {
+    res.map(|q| -> Spog<ArcTerm> {
+        let (spo, g) = q.to_spog();
+        let spo = spo.map(ArcTerm::from_term);
+        let g = g.map(ArcTerm::from_term);
+        (spo, g)
+    })
+    .map_err(|e| QuadIterError::new(e))
+}
+
 /// The type of errors that [`QuadIter`] yields.
 /// This is actually just a wrapper around [`anyhow::Error`] that makes it implement [`std::error::Error`].
 #[derive(Debug)]
@@ -98,5 +109,11 @@ impl std::error::Error for QuadIterError {}
 impl From<anyhow::Error> for QuadIterError {
     fn from(value: anyhow::Error) -> Self {
         Self(value)
+    }
+}
+
+impl From<std::convert::Infallible> for QuadIterError {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
     }
 }

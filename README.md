@@ -39,6 +39,11 @@ See https://github.com/ktk/homebrew-sop (thanks to @ktk).
 
 ## Quick start
 
+Check that a file is valid RDF/XML
+```
+sop parse file.rdf ! Z
+```
+
 Convert an RDF/XML file in turle:
 ```
 sop parse file.rdf ! serialize ttl -o file.ttl

@@ -30,14 +30,14 @@ use crate::common::{format::Format, quad_iter::QuadIter};
 pub struct Args {
     /// Format to serialize
     #[arg()]
-    format: Format,
+    pub(crate) format: Format,
 
     /// File to serialize into [default: standard output]
     #[arg(short, long)]
-    output: Option<String>,
+    pub(crate) output: Option<String>,
 
     #[command(flatten)]
-    options: SerializerOptions,
+    pub(crate) options: SerializerOptions,
 }
 
 /// Reusable serializer options
