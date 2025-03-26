@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{Error, Result};
+use anyhow::{anyhow, Error, Result};
 use rayon::prelude::*;
 use sophia::{
     api::{
@@ -44,7 +44,14 @@ pub struct Args {
     multiple: Vec<FilesOrUrl>,
 
     /// Format to parse
-    #[arg(short, long)]
+    ///
+    /// When parsing from a single source, this option overrides any format that
+    /// could be guessed from the filename or HTTP headers.
+    ///
+    /// When parsing multiple sources (with the --multiple argument),
+    /// this option is only used on files whose format can not be guessed from
+    /// their extension.
+    #[arg(short, long, verbatim_doc_comment)]
     format: Option<Format>,
 
     /// Base IRI against which relative IRIs will be resolve
@@ -98,7 +105,7 @@ pub fn run(mut args: Args) -> Result<()> {
     if args.multiple.is_empty() {
         match args.file_or_url.take().unwrap_or(FileOrUrl::StdIn) {
             FileOrUrl::StdIn => parse_stdin(args, handler),
-            FileOrUrl::File(filename) => parse_file(args, &PathBuf::from(filename), handler),
+            FileOrUrl::File(filename) => parse_file(args, &PathBuf::from(filename), handler, false),
             FileOrUrl::Url(url) => parse_url(args, url, handler),
         }
     } else {
@@ -117,7 +124,7 @@ pub fn run(mut args: Args) -> Result<()> {
                     tx: &tx,
                 };
                 if let Err(err) = match path_or_url {
-                    PathOrUrl::Path(path_buf) => parse_file(args.clone(), &path_buf, handler),
+                    PathOrUrl::Path(path_buf) => parse_file(args.clone(), &path_buf, handler, true),
                     PathOrUrl::Url(url) => parse_url(args.clone(), url, handler),
                 } {
                     log::error!("{err}");
@@ -140,14 +147,25 @@ fn parse_stdin(args: Args, handler: QuadHandler) -> std::result::Result<(), Erro
     parse_read(read, format, base, args.options, handler)
 }
 
-fn parse_file(args: Args, filename: &Path, handler: QuadHandler) -> std::result::Result<(), Error> {
-    let format = match args.format {
-        Some(f) => f,
-        None => match filename.to_string_lossy().rsplit(".").next() {
-            Some(ext) => ext.parse(),
-            None => Err(Error::msg("Cannot guess format for file {filename}")),
-        }?,
+fn parse_file(
+    args: Args,
+    filename: &Path,
+    handler: QuadHandler,
+    prefer_guess: bool,
+) -> std::result::Result<(), Error> {
+    let guess_format = || {
+        filename
+            .extension()
+            .and_then(|ext| ext.to_string_lossy().parse::<Format>().ok())
     };
+    let format = if prefer_guess {
+        guess_format().or(args.format)
+    } else {
+        args.format.or_else(guess_format)
+    }
+    .ok_or_else(|| {
+        anyhow!("Can not guess format for file {filename:?}, please specify with --format")
+    })?;
     let read = std::fs::File::open(filename)?;
     let base = match args.base {
         Some(b) => b,

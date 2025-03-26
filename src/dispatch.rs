@@ -18,7 +18,7 @@ use crate::{
         quad_handler::QuadHandler,
         quad_iter::{quad_iter_item, QuadIter},
     },
-    serialize::{self, SerializerOptions},
+    serialize::{self, SerializerArgs, SerializerOptions},
 };
 
 /// Dispatch quads onto the filesystem based on their graph name
@@ -121,14 +121,17 @@ fn do_dispatch(dataset: &LightDataset, gn: &SimpleTerm, path: &str, args: &Args)
             .map(quad_iter_item),
     );
 
-    let opt_ext = path.rsplit(".").next();
-    let format = opt_ext
-        .and_then(|ext| ext.parse::<Format>().ok())
+    let ext = path.rsplit(".").next().unwrap();
+    let format = ext
+        .parse::<Format>()
+        .ok()
         .or(args.format)
-        .unwrap_or(Format::NTriples);
+        .or(Some(Format::NTriples));
     let ser_args = serialize::Args {
-        format,
-        output: None,
+        main: SerializerArgs {
+            format,
+            output: None,
+        },
         options: args.options.clone(),
     };
 
@@ -150,6 +153,7 @@ fn do_dispatch(dataset: &LightDataset, gn: &SimpleTerm, path: &str, args: &Args)
     } else {
         log::info!("Writing {dest:?}");
     }
+    log::trace!("in {:?}", format.unwrap());
 
     serialize::serialize_to_write(quads, ser_args, file)
 }

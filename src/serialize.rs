@@ -3,7 +3,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use sophia::{
     api::{
         prefix::PrefixMapPair,
@@ -29,16 +29,23 @@ use crate::common::{format::Format, prefix_map::parse_prefix_map, quad_iter::Qua
 /// Serialize quads to an RDF concrete syntax
 #[derive(clap::Args, Clone, Debug)]
 pub struct Args {
-    /// Format to serialize
-    #[arg()]
-    pub(crate) format: Format,
+    #[clap(flatten)]
+    pub(crate) main: SerializerArgs,
+
+    #[command(flatten)]
+    pub(crate) options: SerializerOptions,
+}
+
+#[derive(clap::Args, Clone, Debug)]
+#[group(required = true, multiple = true)]
+pub struct SerializerArgs {
+    /// Format to serialize in (required if --output is absent or ambiguous)
+    #[arg(short, long)]
+    pub(crate) format: Option<Format>,
 
     /// File to serialize into [default: standard output]
     #[arg(short, long)]
     pub(crate) output: Option<String>,
-
-    #[command(flatten)]
-    pub(crate) options: SerializerOptions,
 }
 
 /// Reusable serializer options
@@ -59,17 +66,32 @@ pub struct SerializerOptions {
 
 type PrefixMap = Vec<PrefixMapPair>;
 
-pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
+pub fn run(quads: QuadIter, args: Args) -> Result<()> {
     log::trace!("serialize args: {args:#?}");
-    match args.output.take() {
+    match args.main.output.as_ref() {
         None => serialize_to_write(quads, args, stdout()),
-        Some(filename) => serialize_to_write(quads, args, std::fs::File::create(filename)?),
+        Some(filename) => {
+            let file = std::fs::File::create(filename)?;
+            serialize_to_write(quads, args, file)
+        }
     }
 }
 
 pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -> Result<()> {
     let out = std::io::BufWriter::new(write);
-    match args.format {
+    let format = args
+        .main
+        .format
+        .ok_or("")
+        .or_else(|_| {
+            let filename = args.main.output.as_ref().unwrap(); // output is required if format is absent
+            let ext = filename.rsplit(".").next().unwrap();
+            ext.parse::<Format>().map_err(|_| filename.as_str())
+        })
+        .map_err(|filename| {
+            anyhow!("Can not guess format for file {filename:?}, please specify with --format")
+        })?;
+    match format {
         Format::GeneralizedTriG => {
             todo!()
         }
