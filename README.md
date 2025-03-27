@@ -44,19 +44,20 @@ Check that a file is valid RDF/XML
 sop parse file.rdf ! Z
 ```
 
-Convert an RDF/XML file in turtle:
+Convert an JSON-LD file in turtle:
 ```
-sop parse file.rdf ! serialize ttl -o file.ttl
-```
-
-Run a SPARQL query over a file (**caveat**: SPARQL support is *very* partial at the moment)
-```
-sop parse file.jsonld ! query 'SELECT ?t { [] a ?t }'
+sop parse file.jsonld ! serialize -o file.ttl
 ```
 
-Remove all language strings that are not in english, and serialize back to turtle
+Run a SPARQL query over a file retrieved from the web
+(**caveat**: SPARQL support is *very* partial at the moment)
 ```
-sop parse -f ttl ! filter 'coalesce(langMatches(lang(?o), "en"), true)' ! serialize ttl
+sop parse http://example.org/file.ttl ! query 'SELECT ?t { [] a ?t }'
+```
+
+Read Turtle from stdin, remove all language strings that are not in english, and serialize back to turtle
+```
+sop parse -f ttl ! filter 'coalesce(langMatches(lang(?o), "en"), true)' ! serialize -f ttl
 ```
 
 Produce the canonical version of a turtle file, using a fixed base IRI
