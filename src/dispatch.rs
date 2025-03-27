@@ -107,7 +107,7 @@ pub fn run(mut quads: QuadIter, mut args: Args) -> Result<()> {
 
 fn try_extract_path<'a>(gn: &'a SimpleTerm, root: &str) -> Option<&'a str> {
     if let SimpleTerm::Iri(iri) = gn {
-        iri.starts_with(root).then_some(&iri[root.len()..])
+        iri.starts_with(root).then(|| &iri[root.len()..])
     } else {
         None
     }
