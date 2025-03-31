@@ -13,6 +13,7 @@ pub enum Format {
     RdfXml,
     TriG,
     Turtle,
+    YamlLd,
 }
 
 pub use Format::*;
@@ -26,6 +27,7 @@ impl std::str::FromStr for Format {
                 r"^( generalized-n-?quads | gn-?quads | gnq )$",
                 r"^( generalized-trig | gtrig | text/rdf\+n3 )$",
                 r"^( application/ld\+json | json-?ld | application/json | json )$",
+                r"^( application/ld\+yaml| yaml-?ld | ymlld | application/yaml | yaml | yml )$",
                 r"^( application/n-quads | n-?quads | nq )",
                 r"^( application/n-triples | n-?triples | nt | text/plain )",
                 r"^( application/rdf\+xml | rdf | rdf/?xml | application/xml | xml )$",
@@ -41,11 +43,12 @@ impl std::str::FromStr for Format {
             Some(0) => Ok(GeneralizedNQuads),
             Some(1) => Ok(GeneralizedTriG),
             Some(2) => Ok(JsonLd),
-            Some(3) => Ok(NQuads),
-            Some(4) => Ok(NTriples),
-            Some(5) => Ok(RdfXml),
-            Some(6) => Ok(TriG),
-            Some(7) => Ok(Format::Turtle),
+            Some(3) => Ok(YamlLd),
+            Some(4) => Ok(NQuads),
+            Some(5) => Ok(NTriples),
+            Some(6) => Ok(RdfXml),
+            Some(7) => Ok(TriG),
+            Some(8) => Ok(Format::Turtle),
             _ => Err(Error::msg(format!("Unrecognized format: {s}"))),
         }
     }
@@ -110,6 +113,19 @@ mod test {
     #[test_case("ttl" => Turtle)]
     #[test_case("TTL" => Turtle; "ttl cap")]
     #[test_case("application/turtle" => Turtle)]
+    #[test_case("application/ld+yaml" => YamlLd)]
+    #[test_case("yaml-ld" => YamlLd)]
+    #[test_case("YAML-LD" => YamlLd; "yaml-ld cap")]
+    #[test_case("yamlld" => YamlLd)]
+    #[test_case("YamlLd" => YamlLd; "yamlld cam")]
+    #[test_case("YAMLLD" => YamlLd; "yamlld cap")]
+    #[test_case("ymlld" => YamlLd)]
+    #[test_case("YMLLD" => YamlLd; "ymlld cap")]
+    #[test_case("application/yaml" => YamlLd)]
+    #[test_case("yaml" => YamlLd)]
+    #[test_case("YAML" => YamlLd; "yaml cap")]
+    #[test_case("yml" => YamlLd)]
+    #[test_case("YML" => YamlLd; "yml cap")]
     fn parse_format(txt: &str) -> Format {
         txt.parse().unwrap()
     }

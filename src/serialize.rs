@@ -1,5 +1,5 @@
 use std::{
-    io::{stdout, Write},
+    io::{stdout, BufWriter, Write},
     sync::atomic::{AtomicBool, Ordering},
 };
 
@@ -134,6 +134,13 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
             }
             let ser = TurtleSerializer::new_with_config(out, config);
             serialize_triples(quads, ser)
+        }
+        Format::YamlLd => {
+            let mut json_buf = vec![];
+            let ser = JsonLdSerializer::new(BufWriter::new(&mut json_buf));
+            serialize_quads(quads, ser)?;
+            let val: serde_json::Value = serde_json::from_reader(&json_buf[..])?;
+            serde_yaml::to_writer(out, &val).with_context(|| "Error in converting to YAML")
         }
     }
 }

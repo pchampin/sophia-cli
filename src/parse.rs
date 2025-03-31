@@ -1,5 +1,5 @@
 use std::{
-    io::BufReader,
+    io::{BufRead, BufReader},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -75,7 +75,7 @@ pub struct Args {
 pub struct ParserOptions {
     /// Local cache for known contexts.
     ///
-    /// Only applies to JSON-LD.
+    /// Only applies to JSON-LD and YAML-LD.
     ///
     /// Every file or subdirectory `ITEM` of that directory is interpreted as
     /// a local cache for the `https://ITEM/` namespace.
@@ -90,7 +90,7 @@ pub struct ParserOptions {
 
     /// Fetch unknown context IRIs as URLs.
     ///
-    /// Only applies to JSON-LD.
+    /// Only applies to JSON-LD and YAML-LD.
     ///
     /// This is not the default behavior, because fetching unknown contexts
     /// from the web (or the filesystem) is usually not fit for production.
@@ -223,7 +223,7 @@ fn parse_read<R: std::io::Read>(
             let quads = QuadParser::parse(&parser, bufread);
             handler.handle_quads(QuadIter::from_quad_source(quads))
         }
-        JsonLd => {
+        JsonLd | YamlLd => {
             if options.loader_urls {
                 let options = JsonLdOptions::new()
                     .with_base(base.map_unchecked(std::sync::Arc::from))
@@ -236,16 +236,12 @@ fn parse_read<R: std::io::Read>(
                             ),
                         )
                     });
-                let parser = JsonLdParser::new_with_options(options);
-                let quads = QuadParser::parse(&parser, bufread);
-                handler.handle_quads(QuadIter::from_quad_source(quads))
+                parse_x_ld(format, options, bufread, handler)
             } else {
                 let options = JsonLdOptions::new()
                     .with_base(base.map_unchecked(std::sync::Arc::from))
                     .with_document_loader_closure(|| make_fs_loader(options.loader_local.as_ref()));
-                let parser = JsonLdParser::new_with_options(options);
-                let quads = QuadParser::parse(&parser, bufread);
-                handler.handle_quads(QuadIter::from_quad_source(quads))
+                parse_x_ld(format, options, bufread, handler)
             }
         }
         NQuads => {
@@ -274,6 +270,25 @@ fn parse_read<R: std::io::Read>(
             handler.handle_quads(QuadIter::from_quad_source(triples.to_quads()))
         }
     }
+}
+
+/// Parse JSON-LD or variants (YAML-LD)
+fn parse_x_ld<L: sophia::jsonld::loader_factory::LoaderFactory, B: BufRead>(
+    format: Format,
+    options: JsonLdOptions<L>,
+    bufread: B,
+    handler: QuadHandler,
+) -> Result<()> {
+    let parser = JsonLdParser::new_with_options(options);
+    let quads = if format == YamlLd {
+        let value: serde_json::Value = serde_yaml::from_reader(bufread)?;
+        let json = serde_json::to_string(&value)?;
+        QuadParser::parse(&parser, BufReader::new(json.as_bytes()))
+    } else {
+        debug_assert_eq!(format, JsonLd);
+        QuadParser::parse(&parser, bufread)
+    };
+    handler.handle_quads(QuadIter::from_quad_source(quads))
 }
 
 fn filename_to_iri(filename: &Path) -> Result<Iri<String>> {
