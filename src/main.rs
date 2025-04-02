@@ -11,6 +11,7 @@ mod merge;
 mod null;
 mod parse;
 mod query;
+mod relativize;
 mod serialize;
 
 /// Swiss-army knife for processing RDF and Linked Data.
@@ -55,6 +56,8 @@ enum SinkSubcommand {
     Null(null::Args),
     #[command(visible_aliases=["q"], aliases=["qu", "que"])]
     Query(query::Args),
+    #[command(visible_aliases=["r"], aliases=["re", "rel"])]
+    Relativize(relativize::Args),
     #[command(visible_aliases=["s"], aliases=["se", "ser"])]
     Serialize(serialize::Args),
 }
@@ -68,6 +71,7 @@ impl SinkSubcommand {
             Self::Merge(args) => merge::run(quads, args),
             Self::Null(args) => null::run(quads, args),
             Self::Query(args) => query::run(quads, args),
+            Self::Relativize(args) => relativize::run(quads, args),
             Self::Serialize(args) => serialize::run(quads, args),
         }
     }
