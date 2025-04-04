@@ -42,21 +42,27 @@ pub fn run(quads: QuadIter, args: Args) -> Result<()> {
 }
 
 pub trait RelativizerExt {
-    fn relativize_iter<'s>(
-        &'s self,
-        quads: impl Iterator<Item = QuadIterItem> + 's,
-    ) -> QuadIter<'s>;
+    fn relativize_iter<'s>(self, quads: impl Iterator<Item = QuadIterItem> + 's) -> QuadIter<'s>
+    where
+        Self: 's;
     fn relativize_quad(&self, quad: Spog<ArcTerm>) -> Spog<ArcTerm>;
     fn relativize_term(&self, term: ArcTerm) -> ArcTerm;
     fn relativize_iriref(&self, iriref: IriRef<Arc<str>>) -> IriRef<Arc<str>>;
 }
 
-impl RelativizerExt for Relativizer<&str> {
-    fn relativize_iter<'s>(
-        &'s self,
-        quads: impl Iterator<Item = QuadIterItem> + 's,
-    ) -> QuadIter<'s> {
-        QuadIter::new(quads.map_quads(|q| self.relativize_quad(q)).into_iter())
+impl<T> RelativizerExt for Relativizer<T>
+where
+    T: std::ops::Deref<Target = str>,
+{
+    fn relativize_iter<'s>(self, quads: impl Iterator<Item = QuadIterItem> + 's) -> QuadIter<'s>
+    where
+        Self: 's,
+    {
+        QuadIter::new(
+            quads
+                .map_quads(move |q| self.relativize_quad(q))
+                .into_iter(),
+        )
     }
 
     fn relativize_quad(&self, quad: Spog<ArcTerm>) -> Spog<ArcTerm> {

@@ -4,14 +4,14 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use rayon::prelude::*;
 use sophia::{
     api::{
         parser::{QuadParser, TripleParser},
         source::TripleSource,
     },
-    iri::Iri,
+    iri::{relativize::Relativizer, resolve::BaseIri, Iri},
     jsonld::{JsonLdOptions, JsonLdParser},
     turtle::parser::{
         gnq::GNQuadsParser, gtrig::GTriGParser, nq::NQuadsParser, nt::NTriplesParser,
@@ -28,6 +28,7 @@ use crate::common::{
     quad_handler::QuadHandler,
     quad_iter::{QuadIter, QuadIterItem},
 };
+use crate::relativize::RelativizerExt;
 
 /// Parse data in an RDF concrete syntax into quads
 #[derive(clap::Args, Clone, Debug)]
@@ -62,6 +63,17 @@ pub struct Args {
     /// Does not apply to N-Quands, N-Triples or Generalized N-Quads.
     #[arg(short, long, value_parser = |txt: &str| Iri::new(txt.to_string()), verbatim_doc_comment)]
     base: Option<Iri<String>>,
+
+    /// Whether to relativize parsed IRIs against the source IRI.
+    ///
+    /// If provided without a value, defaults to 0.
+    /// If provided with a value (n≥0), represent the number of parent "directories" to also relativize.
+    ///
+    /// For example, `-r` will not generate any relative IRI reference starting with '..'.
+    /// `-r 2` would generate relative IRI references starting with '..' or '../..',
+    /// but not with `../../..`
+    #[arg(short, long, verbatim_doc_comment)]
+    relativize: Option<Option<u8>>,
 
     #[command(flatten)]
     options: ParserOptions,
@@ -144,7 +156,8 @@ fn parse_stdin(args: Args, handler: QuadHandler) -> std::result::Result<(), Erro
     let base = args
         .base
         .unwrap_or_else(|| Iri::new_unchecked("x-stdin://".into()));
-    parse_read(read, format, base, args.options, handler)
+    let rel = make_relativizer(&base, args.relativize);
+    parse_read(read, format, base, rel, args.options, handler)
 }
 
 fn parse_file(
@@ -171,7 +184,8 @@ fn parse_file(
         Some(b) => b,
         None => filename_to_iri(filename)?,
     };
-    parse_read(read, format, base, args.options, handler)
+    let rel = make_relativizer(&base, args.relativize);
+    parse_read(read, format, base, rel, args.options, handler)
 }
 
 fn parse_url(
@@ -183,6 +197,7 @@ fn parse_url(
         Some(b) => b,
         None => Iri::new_unchecked(url.clone().to_string()),
     };
+    let rel = make_relativizer(&base, args.relativize);
     let client = reqwest::blocking::Client::new();
     let resp = client
         .get(url)
@@ -201,27 +216,28 @@ fn parse_url(
             None => Err(Error::msg("Cannot guess format for URL {url}")),
         }?,
     };
-    parse_read(resp, format, base, args.options, handler)
+    parse_read(resp, format, base, rel, args.options, handler)
 }
 
 fn parse_read<R: std::io::Read>(
     read: R,
     format: Format,
     base: Iri<String>,
+    mut relativizer: Option<Relativizer<String>>,
     options: ParserOptions,
     handler: QuadHandler,
 ) -> Result<()> {
     let bufread = BufReader::new(read);
-    match format {
+    let quads = match format {
         GeneralizedNQuads => {
             let parser = GNQuadsParser {};
             let quads = QuadParser::parse(&parser, bufread);
-            handler.handle_quads(QuadIter::from_quad_source(quads))
+            QuadIter::from_quad_source(quads)
         }
         GeneralizedTriG => {
             let parser = GTriGParser { base: Some(base) };
             let quads = QuadParser::parse(&parser, bufread);
-            handler.handle_quads(QuadIter::from_quad_source(quads))
+            QuadIter::from_quad_source(quads)
         }
         JsonLd | YamlLd => {
             if options.loader_urls {
@@ -236,49 +252,53 @@ fn parse_read<R: std::io::Read>(
                             ),
                         )
                     });
-                parse_x_ld(format, options, bufread, handler)
+                parse_x_ld(format, options, bufread)?
             } else {
                 let options = JsonLdOptions::new()
                     .with_base(base.map_unchecked(std::sync::Arc::from))
                     .with_document_loader_closure(|| make_fs_loader(options.loader_local.as_ref()));
-                parse_x_ld(format, options, bufread, handler)
+                parse_x_ld(format, options, bufread)?
             }
         }
         NQuads => {
             let parser = NQuadsParser {};
             let quads = QuadParser::parse(&parser, bufread);
-            handler.handle_quads(QuadIter::from_quad_source(quads))
+            QuadIter::from_quad_source(quads)
         }
         NTriples => {
             let parser = NTriplesParser {};
             let triples = TripleParser::parse(&parser, bufread);
-            handler.handle_quads(QuadIter::from_quad_source(triples.to_quads()))
+            QuadIter::from_quad_source(triples.to_quads())
         }
         RdfXml => {
             let parser = RdfXmlParser { base: Some(base) };
             let triples = TripleParser::parse(&parser, bufread);
-            handler.handle_quads(QuadIter::from_quad_source(triples.to_quads()))
+            QuadIter::from_quad_source(triples.to_quads())
         }
         TriG => {
             let parser = TriGParser { base: Some(base) };
             let quads = QuadParser::parse(&parser, bufread);
-            handler.handle_quads(QuadIter::from_quad_source(quads))
+            QuadIter::from_quad_source(quads)
         }
         Turtle => {
             let parser = TurtleParser { base: Some(base) };
             let triples = TripleParser::parse(&parser, bufread);
-            handler.handle_quads(QuadIter::from_quad_source(triples.to_quads()))
+            QuadIter::from_quad_source(triples.to_quads())
         }
-    }
+    };
+    let quads = match relativizer.take() {
+        None => quads,
+        Some(rel) => rel.relativize_iter(quads),
+    };
+    handler.handle_quads(quads)
 }
 
 /// Parse JSON-LD or variants (YAML-LD)
-fn parse_x_ld<L: sophia::jsonld::loader_factory::LoaderFactory, B: BufRead>(
+fn parse_x_ld<'a, L: sophia::jsonld::loader_factory::LoaderFactory, B: BufRead>(
     format: Format,
     options: JsonLdOptions<L>,
     bufread: B,
-    handler: QuadHandler,
-) -> Result<()> {
+) -> Result<QuadIter<'a>> {
     let parser = JsonLdParser::new_with_options(options);
     let quads = if format == YamlLd {
         let value: serde_json::Value = serde_yaml::from_reader(bufread)?;
@@ -288,7 +308,7 @@ fn parse_x_ld<L: sophia::jsonld::loader_factory::LoaderFactory, B: BufRead>(
         debug_assert_eq!(format, JsonLd);
         QuadParser::parse(&parser, bufread)
     };
-    handler.handle_quads(QuadIter::from_quad_source(quads))
+    Ok(QuadIter::from_quad_source(quads))
 }
 
 fn filename_to_iri(filename: &Path) -> Result<Iri<String>> {
@@ -333,6 +353,17 @@ fn make_fs_loader(path: Option<&PathBuf>) -> sophia::jsonld::loader::FsLoader {
         }
     }
     ret
+}
+
+fn make_relativizer(
+    base: &Iri<String>,
+    rel_arg: Option<Option<u8>>,
+) -> Option<Relativizer<String>> {
+    rel_arg.map(|opt| {
+        let parents = opt.unwrap_or(0);
+        let base = BaseIri::new(base.clone().unwrap()).unwrap();
+        Relativizer::new(base, parents)
+    })
 }
 
 static ACCEPT: &str = "application/n-quads, application/n-triples, application/trig;q=0.9, text/turtle=q=0.9, application/ld+json;q=0.8, application/rdf+xml;q=0.7, */*;q=0.1";
