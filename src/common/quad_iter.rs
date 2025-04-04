@@ -26,7 +26,7 @@ impl<'a> QuadIter<'a> {
     {
         Self::new(
             quads
-                .map_quads(|q| q)
+                .map_quads(|q| q) // to ensure that .into_iter() is available
                 .into_iter()
                 .map(|res| res.map_err(QuadIterError::new)),
         )

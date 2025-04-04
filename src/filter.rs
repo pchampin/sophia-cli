@@ -2,7 +2,7 @@ use std::convert::Infallible;
 
 use anyhow::Result;
 use sophia::{
-    api::{quad::Spog, sparql::SparqlDataset},
+    api::{quad::Spog, source::QuadSource, sparql::SparqlDataset},
     sparql::{SparqlQuery, SparqlWrapper, SparqlWrapperError},
     term::ArcTerm,
 };
@@ -24,21 +24,22 @@ pub struct Args {
     pipeline: Option<PipeSubcommand>,
 }
 
-pub fn run(mut quads: QuadIter, args: Args) -> Result<()> {
+pub fn run(quads: QuadIter, args: Args) -> Result<()> {
     log::trace!("filter args: {args:#?}");
 
     let ask_query = make_query(&args.expression)?;
     let handler = QuadHandler::new(args.pipeline);
-    handler.handle_quads(QuadIter::new(quads.into_iter().filter_map(|res| {
-        let Ok(quad) = res else {
-            return Some(res); // always keep errors
-        };
-        let dataset = [quad];
-        let sparql = SparqlWrapper(&dataset[..]);
-        let resp = sparql.query(&ask_query).ok()?.into_boolean();
-        let [quad] = dataset;
-        resp.then(|| Ok(quad))
-    })))
+    handler.handle_quads(QuadIter::new(
+        quads
+            .filter_map_quads(|quad| {
+                let dataset = [quad];
+                let sparql = SparqlWrapper(&dataset[..]);
+                let resp = sparql.query(&ask_query).ok()?.into_boolean();
+                let [quad] = dataset;
+                resp.then_some(quad)
+            })
+            .into_iter(),
+    ))
 }
 
 fn make_query(

@@ -117,7 +117,8 @@ fn do_dispatch(dataset: &LightDataset, gn: &SimpleTerm, path: &str, args: &Args)
     let quads = QuadIter::new(
         dataset
             .quads_matching(Any, Any, Any, [Some(gn)])
-            .map(|res| res.map(|(_, spo)| (None, spo))) // drop graph names
+            .map_quads(|(_, spo)| (None, spo)) // drop graph names
+            .into_iter()
             .map(quad_iter_item),
     );
 

@@ -3,7 +3,7 @@ use sophia::{
     api::{
         ns::xsd,
         quad::Spog,
-        source::QuadSource,
+        source::{QuadSource, TripleSource},
         sparql::{SparqlDataset, SparqlResult},
         term::Term,
     },
@@ -124,10 +124,9 @@ fn handle_triples(
     args: Args,
 ) -> Result<()> {
     let handler = QuadHandler::new(args.pipeline);
-    handler.handle_quads(QuadIter::new(triples.map(|res| {
-        res.map(|spo| (spo.map(ResultTerm::unwrap), None))
-            .map_err(QuadIterError::new)
-    })))?;
+    handler.handle_quads(QuadIter::from_quad_source(
+        triples.map_triples(|spo| (spo, None)),
+    ))?;
     Ok(())
 }
 

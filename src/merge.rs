@@ -1,4 +1,5 @@
 use anyhow::Result;
+use sophia::api::source::QuadSource;
 
 use crate::common::{
     pipe::PipeSubcommand,
@@ -17,14 +18,13 @@ pub struct Args {
     pipeline: Option<PipeSubcommand>,
 }
 
-pub fn run(mut quads: QuadIter, args: Args) -> Result<()> {
+pub fn run(quads: QuadIter, args: Args) -> Result<()> {
     log::trace!("merge-default-graph args: {args:#?}");
     let handler = QuadHandler::new(args.pipeline);
     if args.drop {
-        handler.handle_quads(QuadIter::new(quads.into_iter().map(|res| match res {
-            Ok((spo, Some(_))) => Ok((spo, None)),
-            other => other,
-        })))
+        handler.handle_quads(QuadIter::new(
+            quads.map_quads(|(spo, _)| (spo, None)).into_iter(),
+        ))
     } else {
         handler.handle_quads(QuadIter::new(MergeDefaultGraph::new(quads)))
     }
