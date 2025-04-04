@@ -8,7 +8,7 @@ use crate::common::quad_iter::QuadIter;
 #[derive(clap::Args, Clone, Debug)]
 pub struct Args {}
 
-pub fn run(mut quads: QuadIter, _args: Args) -> Result<()> {
+pub fn run(quads: QuadIter, _args: Args) -> Result<()> {
     for q in quads.into_iter() {
         q?;
     }

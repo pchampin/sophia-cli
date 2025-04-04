@@ -145,7 +145,7 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
     }
 }
 
-fn serialize_triples<S: TripleSerializer>(mut quads: QuadIter, mut ser: S) -> Result<()>
+fn serialize_triples<S: TripleSerializer>(quads: QuadIter, mut ser: S) -> Result<()>
 where
     <S as TripleSerializer>::Error: Send + Sync,
 {

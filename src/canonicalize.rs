@@ -51,7 +51,7 @@ pub struct Args {
     poison_resistance: FiniteNonNegativeF64,
 }
 
-pub fn run(mut quads: QuadIter, mut args: Args) -> Result<()> {
+pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
     log::trace!("canonicalize args: {args:#?}");
     let dataset: MyDataset = quads.collect_quads()?;
     match args.output.take() {

@@ -55,17 +55,173 @@ impl<'a> QuadIter<'a> {
     }
 }
 
-impl<'a> std::ops::Deref for QuadIter<'a> {
-    type Target = dyn Iterator<Item = QuadIterItem> + 'a;
+impl Iterator for QuadIter<'_> {
+    type Item = QuadIterItem;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
     }
-}
 
-impl std::ops::DerefMut for QuadIter<'_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        self.0.count()
+    }
+
+    fn last(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        self.0.last()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth(n)
+    }
+
+    fn for_each<F>(self, f: F)
+    where
+        Self: Sized,
+        F: FnMut(Self::Item),
+    {
+        self.0.for_each(f)
+    }
+
+    fn partition<B, F>(self, f: F) -> (B, B)
+    where
+        Self: Sized,
+        B: Default + Extend<Self::Item>,
+        F: FnMut(&Self::Item) -> bool,
+    {
+        self.0.partition(f)
+    }
+
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.0.fold(init, f)
+    }
+
+    fn reduce<F>(self, f: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item, Self::Item) -> Self::Item,
+    {
+        self.0.reduce(f)
+    }
+
+    fn all<F>(&mut self, f: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool,
+    {
+        self.0.all(f)
+    }
+
+    fn any<F>(&mut self, f: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool,
+    {
+        self.0.any(f)
+    }
+
+    fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
+    where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> bool,
+    {
+        self.0.find(predicate)
+    }
+
+    fn find_map<B, F>(&mut self, f: F) -> Option<B>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Option<B>,
+    {
+        self.0.find_map(f)
+    }
+
+    fn position<P>(&mut self, predicate: P) -> Option<usize>
+    where
+        Self: Sized,
+        P: FnMut(Self::Item) -> bool,
+    {
+        self.0.position(predicate)
+    }
+
+    fn max_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> B,
+    {
+        self.0.max_by_key(f)
+    }
+
+    fn max_by<F>(self, compare: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> std::cmp::Ordering,
+    {
+        self.0.max_by(compare)
+    }
+
+    fn min_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> B,
+    {
+        self.0.min_by_key(f)
+    }
+
+    fn min_by<F>(self, compare: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> std::cmp::Ordering,
+    {
+        self.0.min_by(compare)
+    }
+
+    fn eq<I>(self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Self::Item: PartialEq<I::Item>,
+        Self: Sized,
+    {
+        self.0.eq(other)
+    }
+
+    fn ne<I>(self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Self::Item: PartialEq<I::Item>,
+        Self: Sized,
+    {
+        self.0.ne(other)
+    }
+
+    fn is_sorted_by<F>(self, compare: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> bool,
+    {
+        self.0.is_sorted_by(compare)
+    }
+
+    fn is_sorted_by_key<F, K>(self, f: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> K,
+        K: PartialOrd,
+    {
+        self.0.is_sorted_by_key(f)
     }
 }
 

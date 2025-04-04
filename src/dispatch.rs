@@ -62,7 +62,7 @@ pub struct Args {
     pipeline: Option<PipeSubcommand>,
 }
 
-pub fn run(mut quads: QuadIter, mut args: Args) -> Result<()> {
+pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
     log::trace!("dispatch args: {args:#?}");
 
     // sanitizing args
