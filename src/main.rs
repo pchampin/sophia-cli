@@ -3,6 +3,7 @@ use clap::Parser;
 use clap_verbosity::InfoLevel;
 use common::quad_iter::QuadIter;
 
+mod absolutize;
 mod canonicalize;
 mod common;
 mod dispatch;
@@ -44,6 +45,8 @@ enum SourceSubcommand {
 /// Subcommands that can be used on the right-hand side of a pipe
 #[derive(clap::Subcommand, Clone, Debug)]
 enum SinkSubcommand {
+    #[command(visible_aliases=["a"], aliases=["ab", "abs"])]
+    Absolutize(absolutize::Args),
     #[command(visible_aliases=["c", "c14n"], aliases=["ca", "can"])]
     Canonicalize(canonicalize::Args),
     #[command(visible_aliases=["d"], aliases=["di", "dis"])]
@@ -52,27 +55,28 @@ enum SinkSubcommand {
     Filter(filter::Args),
     #[command(visible_aliases=["m", "merge-default-graph"], aliases=["me", "mer"])]
     Merge(merge::Args),
-    #[command(visible_aliases=["n", "Z"], aliases=["nu", "nul"])]
-    Null(null::Args),
     #[command(visible_aliases=["q"], aliases=["qu", "que"])]
     Query(query::Args),
     #[command(visible_aliases=["r"], aliases=["re", "rel"])]
     Relativize(relativize::Args),
     #[command(visible_aliases=["s"], aliases=["se", "ser"])]
     Serialize(serialize::Args),
+    #[command(visible_aliases=["n", "Z"], aliases=["nu", "nul"])]
+    Null(null::Args),
 }
 
 impl SinkSubcommand {
     pub fn handle_quads(self, quads: QuadIter) -> Result<()> {
         match self {
+            Self::Absolutize(args) => absolutize::run(quads, args),
             Self::Canonicalize(args) => canonicalize::run(quads, args),
             Self::Dispatch(args) => dispatch::run(quads, args),
             Self::Filter(args) => filter::run(quads, args),
             Self::Merge(args) => merge::run(quads, args),
-            Self::Null(args) => null::run(quads, args),
             Self::Query(args) => query::run(quads, args),
             Self::Relativize(args) => relativize::run(quads, args),
             Self::Serialize(args) => serialize::run(quads, args),
+            Self::Null(args) => null::run(quads, args),
         }
     }
 }

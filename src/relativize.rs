@@ -14,6 +14,8 @@ use crate::common::{
 };
 
 /// Relativize all IRIs against the given base.
+///
+/// See also the `absolutize` subcommand.
 #[derive(clap::Args, Clone, Debug)]
 #[command(verbatim_doc_comment)]
 pub struct Args {
@@ -34,7 +36,7 @@ pub struct Args {
 }
 
 pub fn run(quads: QuadIter, args: Args) -> Result<()> {
-    log::trace!("filter args: {args:#?}");
+    log::trace!("relativize args: {args:#?}");
     let base = BaseIri::new(args.base.as_str()).unwrap();
     let relativizer = Relativizer::new(base, args.parents);
     let handler = QuadHandler::new(args.pipeline);
