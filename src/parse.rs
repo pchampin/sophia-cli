@@ -113,6 +113,14 @@ pub struct ParserOptions {
 
 pub fn run(mut args: Args) -> Result<()> {
     log::trace!("parse args: {args:#?}");
+    if !args.multiple.is_empty() {
+        if args.base.is_some() {
+            bail!("Can not use --base with --multiple (this would cause information loss)");
+        }
+        if args.relativize.is_some() {
+            bail!("Can not use --relativize with --multiple (this would cause information loss)");
+        }
+    }
     let handler = QuadHandler::new(args.pipeline.take());
     if args.multiple.is_empty() {
         match args.file_or_url.take().unwrap_or(FileOrUrl::StdIn) {
