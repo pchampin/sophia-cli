@@ -5,10 +5,10 @@ use sophia::{
     api::{
         prelude::{Any, Dataset},
         source::QuadSource,
-        term::{FromTerm, SimpleTerm},
+        term::{FromTerm, SimpleTerm, Term},
     },
     inmem::dataset::LightDataset,
-    iri::Iri,
+    iri::{is_absolute_iri_ref, relativize::Relativizer, Iri},
 };
 
 use crate::{
@@ -18,6 +18,7 @@ use crate::{
         quad_handler::QuadHandler,
         quad_iter::{quad_iter_item, QuadIter},
     },
+    relativize::RelativizerExt,
     serialize::{self, SerializerArgs, SerializerOptions},
 };
 
@@ -54,6 +55,10 @@ pub struct Args {
     /// Format to serialize to (if it can not be guessed from filename)
     #[arg(short, long)]
     format: Option<Format>,
+
+    /// Whether to relativize serialized IRIs against the graph name IRI in dispatched files.
+    #[arg(short, long)]
+    relativize: bool,
 
     #[command(flatten)]
     options: SerializerOptions,
@@ -121,6 +126,16 @@ fn do_dispatch(dataset: &LightDataset, gn: &SimpleTerm, path: &str, args: &Args)
             .into_iter()
             .map(quad_iter_item),
     );
+
+    let quads = if args.relativize {
+        debug_assert!(gn.is_iri() && is_absolute_iri_ref(gn.iri().unwrap().as_str()));
+        // the above must be true, otherwise, we would not be dispatching
+        let base = Iri::new_unchecked(gn.iri().unwrap().unwrap()).to_base();
+        let parents = path.bytes().filter(|b| *b == b'/').count() as u8;
+        Relativizer::new(base, parents).relativize_iter(quads)
+    } else {
+        quads
+    };
 
     let ext = path.rsplit(".").next().unwrap();
     let format = ext
