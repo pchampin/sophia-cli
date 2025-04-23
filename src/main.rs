@@ -2,12 +2,14 @@ use anyhow::Result;
 use clap::Parser;
 use clap_verbosity::InfoLevel;
 use common::quad_iter::QuadIter;
+use log::LevelFilter;
 
 mod absolutize;
 mod canonicalize;
 mod common;
 mod dispatch;
 mod filter;
+mod map;
 mod merge;
 mod null;
 mod parse;
@@ -53,7 +55,10 @@ enum SinkSubcommand {
     Dispatch(dispatch::Args),
     #[command(visible_aliases=["f"], aliases=["fi", "fil"])]
     Filter(filter::Args),
-    #[command(visible_aliases=["m", "merge-default-graph"], aliases=["me", "mer"])]
+    #[command(visible_aliases=["ma"])]
+    Map(map::Args),
+    #[command(visible_aliases=["me", "merge-default-graph"], aliases=["m", "mer"])]
+    // eventually deprecate alias 'm'
     Merge(merge::Args),
     #[command(visible_aliases=["q"], aliases=["qu", "que"])]
     Query(query::Args),
@@ -72,6 +77,7 @@ impl SinkSubcommand {
             Self::Canonicalize(args) => canonicalize::run(quads, args),
             Self::Dispatch(args) => dispatch::run(quads, args),
             Self::Filter(args) => filter::run(quads, args),
+            Self::Map(args) => map::run(quads, args),
             Self::Merge(args) => merge::run(quads, args),
             Self::Query(args) => query::run(quads, args),
             Self::Relativize(args) => relativize::run(quads, args),
@@ -87,6 +93,7 @@ fn main() -> Result<()> {
     env_logger::builder()
         .format_timestamp(None)
         .filter_level(args.verbose.log_level_filter())
+        .filter_module("sophia_sparql", quieter2(args.verbose.log_level_filter()))
         .init();
     use SourceSubcommand::*;
     use Subcommand::*;
@@ -100,4 +107,15 @@ fn quad_from_stdin() -> QuadIter<'static> {
     QuadIter::from_quad_source(sophia::turtle::parser::gnq::parse_bufread(
         std::io::BufReader::new(std::io::stdin()),
     ))
+}
+
+fn quieter2(lf: LevelFilter) -> LevelFilter {
+    match lf {
+        LevelFilter::Off => LevelFilter::Off,
+        LevelFilter::Error => LevelFilter::Off,
+        LevelFilter::Warn => LevelFilter::Off,
+        LevelFilter::Info => LevelFilter::Error,
+        LevelFilter::Debug => LevelFilter::Warn,
+        LevelFilter::Trace => LevelFilter::Info,
+    }
 }
