@@ -141,6 +141,7 @@ pub fn run(mut args: Args) -> Result<()> {
                 log::debug!("{path_or_url:?}");
                 let handler = QuadHandler::Sender {
                     name: path_or_url.to_string(),
+                    bnode_suffix: random_bnode_suffix(),
                     tx: &tx,
                 };
                 if let Err(err) = match path_or_url {
@@ -372,6 +373,17 @@ fn make_relativizer(
         let base = BaseIri::new(base.clone().unwrap()).unwrap();
         Relativizer::new(base, parents)
     })
+}
+
+fn random_bnode_suffix() -> String {
+    let mut bnode_suffix = vec![b'_'; uuid::fmt::Simple::LENGTH + 1];
+    uuid::Uuid::new_v4()
+        .simple()
+        .encode_lower(&mut bnode_suffix[1..]);
+    unsafe {
+        // SAFETY: uuids only contain ASCII characters
+        String::from_utf8_unchecked(bnode_suffix)
+    }
 }
 
 static ACCEPT: &str = "application/n-quads, application/n-triples, application/trig;q=0.9, text/turtle=q=0.9, application/ld+json;q=0.8, application/rdf+xml;q=0.7, */*;q=0.1";
