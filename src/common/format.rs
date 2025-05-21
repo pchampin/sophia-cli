@@ -8,6 +8,7 @@ pub enum Format {
     GeneralizedNQuads,
     GeneralizedTriG,
     JsonLd,
+    Hdt,
     NQuads,
     NTriples,
     RdfXml,
@@ -32,6 +33,7 @@ impl std::str::FromStr for Format {
                 r"^( application/n-triples | n-?triples | nt | text/plain )",
                 r"^( application/rdf\+xml | rdf | rdf/?xml | application/xml | xml )$",
                 r"^( application/trig | trig )",
+                r"^( application/vnd.hdt | hdt )",
                 r"^( text/turtle | turtle | ttl | application/turtle )",
             ])
             .ignore_whitespace(true)
@@ -48,7 +50,8 @@ impl std::str::FromStr for Format {
             Some(5) => Ok(NTriples),
             Some(6) => Ok(RdfXml),
             Some(7) => Ok(TriG),
-            Some(8) => Ok(Format::Turtle),
+            Some(8) => Ok(Hdt),
+            Some(9) => Ok(Format::Turtle),
             _ => Err(Error::msg(format!("Unrecognized format: {s}"))),
         }
     }
@@ -80,6 +83,8 @@ mod test {
     #[test_case("application/json" => JsonLd)]
     #[test_case("json" => JsonLd)]
     #[test_case("JSON" => JsonLd; "json cap")]
+    #[test_case("application/vnd.hdt" => Hdt)]
+    #[test_case("hdt" => Hdt)]
     #[test_case("application/n-quads" => NQuads)]
     #[test_case("n-quads" => NQuads)]
     #[test_case("N-Quads" => NQuads; "n-quads cam")]

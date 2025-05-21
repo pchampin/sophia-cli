@@ -3,7 +3,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use sophia::{
     api::{
         prefix::PrefixMapPair,
@@ -94,6 +94,9 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
     match format {
         Format::GeneralizedTriG => {
             todo!()
+        }
+        Format::Hdt => {
+            bail!("Hdt serialization not supported");
         }
         Format::JsonLd => {
             let indent = if args.options.no_pretty { 0 } else { 2 };
