@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Error, Result};
+use hdt::sophia::api::graph::Graph;
 use rayon::prelude::*;
 use sophia::{
     api::{
@@ -269,6 +270,11 @@ fn parse_read<R: std::io::Read>(
                 parse_x_ld(format, options, bufread)?
             }
         }
+        Hdt => {
+            let hdt = hdt::Hdt::new(bufread).map_err(|err| anyhow::Error::msg(format!("{err}")))?;
+            let triples = GraphAsSource(Some(hdt::HdtGraph { hdt }));
+            QuadIter::from_quad_source(triples.to_quads())
+        }
         NQuads => {
             let parser = NQuadsParser {};
             let quads = QuadParser::parse(&parser, bufread);
@@ -387,3 +393,31 @@ fn random_bnode_suffix() -> String {
 }
 
 static ACCEPT: &str = "application/n-quads, application/n-triples, application/trig;q=0.9, text/turtle=q=0.9, application/ld+json;q=0.8, application/rdf+xml;q=0.7, */*;q=0.1";
+
+// ----
+
+struct GraphAsSource<G>(Option<G>);
+
+impl<G: Graph + 'static> sophia::api::source::Source for GraphAsSource<G> {
+    type Item<'x> = G::Triple<'x>;
+
+    type Error = G::Error;
+
+    fn try_for_some_item<E, F>(
+        &mut self,
+        mut f: F,
+    ) -> sophia::api::source::StreamResult<bool, Self::Error, E>
+    where
+        E: std::error::Error + Send + Sync + 'static,
+        F: FnMut(Self::Item<'_>) -> std::result::Result<(), E>,
+    {
+        if let Some(g) = &self.0 {
+            for t in g.triples() {
+                let t = t.map_err(sophia::api::source::SourceError)?;
+                f(t).map_err(sophia::api::source::SinkError)?;
+            }
+            self.0 = None;
+        }
+        Ok(false)
+    }
+}
