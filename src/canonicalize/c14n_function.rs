@@ -6,6 +6,7 @@ use regex::{RegexSet, RegexSetBuilder};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum C14nFunction {
     RDFC10,
+    Sophia,
 }
 
 impl FromStr for C14nFunction {
@@ -13,7 +14,7 @@ impl FromStr for C14nFunction {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         static RES: LazyLock<RegexSet> = LazyLock::new(|| {
-            RegexSetBuilder::new([r"^( RDFC-?(1(\.?0)?)? )$"])
+            RegexSetBuilder::new([r"^( RDFC-?(1(\.?0)?)? )$", r"^( Sophia(-C14N)? )$"])
                 .ignore_whitespace(true)
                 .case_insensitive(true)
                 .build()
@@ -21,6 +22,7 @@ impl FromStr for C14nFunction {
         });
         match RES.matches(s).iter().next() {
             Some(0) => Ok(C14nFunction::RDFC10),
+            Some(1) => Ok(C14nFunction::Sophia),
             _ => Err(Error::msg(format!("Unrecognized c14n function {s}"))),
         }
     }
@@ -30,6 +32,7 @@ impl std::fmt::Display for C14nFunction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             C14nFunction::RDFC10 => write!(f, "RDFC-1.0"),
+            C14nFunction::Sophia => write!(f, "Sophia-C14N"),
         }
     }
 }

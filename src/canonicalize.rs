@@ -6,10 +6,10 @@ use anyhow::Result;
 use sophia::api::quad::Spog;
 use sophia::api::source::QuadSource;
 use sophia::api::term::SimpleTerm;
-use sophia::c14n::rdfc10::{DEFAULT_DEPTH_FACTOR, DEFAULT_PERMUTATION_LIMIT};
 use sophia::c14n::{
+    self,
     hash::{Sha256, Sha384},
-    rdfc10,
+    rdfc10::{DEFAULT_DEPTH_FACTOR, DEFAULT_PERMUTATION_LIMIT},
 };
 
 use crate::common::f64::FiniteNonNegativeF64;
@@ -32,7 +32,6 @@ pub struct Args {
         short,
         long,
         default_value_t = C14nFunction::RDFC10,
-        hide_default_value = true, // since there is only one possible value for now
     )]
     function: C14nFunction,
 
@@ -62,24 +61,57 @@ pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
 
 fn run_with_output<W: Write>(dataset: MyDataset, args: Args, output: W) -> Result<()> {
     let output = BufWriter::new(output);
+    let poison_resistance: f64 = args.poison_resistance.into();
+    let hash = args.hash_function.unwrap_or(HashFunctionId::Sha256);
     match args.function {
-        C14nFunction::RDFC10 => run_rdfc10(dataset, output, args),
+        C14nFunction::RDFC10 => run_rdfc10(dataset, output, poison_resistance, hash),
+        C14nFunction::Sophia => run_sophia(dataset, output, poison_resistance, hash),
     }
 }
 
-fn run_rdfc10<W: Write>(dataset: MyDataset, output: BufWriter<W>, args: Args) -> Result<()> {
-    let hash = args.hash_function.unwrap_or(HashFunctionId::Sha256);
-    let poison_resistance: f64 = args.poison_resistance.into();
+fn run_rdfc10<W: Write>(
+    dataset: MyDataset,
+    output: BufWriter<W>,
+    poison_resistance: f64,
+    hash: HashFunctionId,
+) -> Result<()> {
     let depth_factor = DEFAULT_DEPTH_FACTOR * poison_resistance as f32;
     let permutation_limit = (DEFAULT_PERMUTATION_LIMIT as f64 * poison_resistance) as usize;
     match hash {
-        HashFunctionId::Sha256 => rdfc10::normalize_with::<Sha256, _, _>(
+        HashFunctionId::Sha256 => c14n::rdfc10::normalize_with::<Sha256, _, _>(
             &dataset,
             output,
             depth_factor,
             permutation_limit,
         )?,
-        HashFunctionId::Sha384 => rdfc10::normalize_with::<Sha384, _, _>(
+        HashFunctionId::Sha384 => c14n::rdfc10::normalize_with::<Sha384, _, _>(
+            &dataset,
+            output,
+            depth_factor,
+            permutation_limit,
+        )?,
+        #[allow(unreachable_patterns)]
+        _ => Err(Error::msg("Cannot apply RDFC-10 with hash function {hash}"))?,
+    }
+    Ok(())
+}
+
+fn run_sophia<W: Write>(
+    dataset: MyDataset,
+    output: BufWriter<W>,
+    poison_resistance: f64,
+    hash: HashFunctionId,
+) -> Result<()> {
+    let depth_factor = DEFAULT_DEPTH_FACTOR * poison_resistance as f32;
+    let permutation_limit = (DEFAULT_PERMUTATION_LIMIT as f64 * poison_resistance) as usize;
+    match hash {
+        HashFunctionId::Sha256 => c14n::sophia::normalize_with::<Sha256, _, _>(
+            &dataset,
+            output,
+            depth_factor,
+            permutation_limit,
+        )?,
+        HashFunctionId::Sha384 => c14n::sophia::normalize_with::<Sha384, _, _>(
             &dataset,
             output,
             depth_factor,
