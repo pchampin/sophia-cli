@@ -39,8 +39,13 @@ pub struct Args {
     ///
     /// Default depends on c14n function; some c14n function may not support
     /// all hash functions.
-    #[arg(short = 'H', long, verbatim_doc_comment)]
-    hash_function: Option<HashFunctionId>,
+    #[arg(
+        short = 'H',
+        long,
+        default_value_t = HashFunctionId::Sha256,
+        verbatim_doc_comment
+    )]
+    hash_function: HashFunctionId,
 
     /// Resistance to "poison graphs"
     ///
@@ -62,7 +67,7 @@ pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
 fn run_with_output<W: Write>(dataset: MyDataset, args: Args, output: W) -> Result<()> {
     let output = BufWriter::new(output);
     let poison_resistance: f64 = args.poison_resistance.into();
-    let hash = args.hash_function.unwrap_or(HashFunctionId::Sha256);
+    let hash = args.hash_function;
     match args.function {
         C14nFunction::RDFC10 => run_rdfc10(dataset, output, poison_resistance, hash),
         C14nFunction::Sophia => run_sophia(dataset, output, poison_resistance, hash),

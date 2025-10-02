@@ -28,6 +28,15 @@ impl FromStr for HashFunctionId {
     }
 }
 
+impl std::fmt::Display for HashFunctionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HashFunctionId::Sha256 => write!(f, "SHA-256"),
+            HashFunctionId::Sha384 => write!(f, "SHA-384"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -47,5 +56,11 @@ mod test {
     #[test_case("sha384" => Sha384; "sha384lower")]
     fn hash_function(txt: &str) -> HashFunctionId {
         txt.parse().unwrap()
+    }
+
+    #[test_case(Sha256)]
+    #[test_case(Sha384)]
+    fn display_round_trip(h: HashFunctionId) {
+        assert_eq!(h, h.to_string().parse::<HashFunctionId>().unwrap())
     }
 }
