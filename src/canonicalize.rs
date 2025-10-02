@@ -27,7 +27,7 @@ pub struct Args {
     #[arg(short, long)]
     output: Option<String>,
 
-    /// Canonicalization function to use (supported: RDFC-1.0)
+    /// Canonicalization function to use (supported: RDFC-1.0, Sophia-C14N)
     #[arg(
         short,
         long,
