@@ -16,9 +16,9 @@ use sophia::{
     },
     jsonld::{JsonLdOptions, JsonLdSerializer},
     turtle::serializer::{
-        nq::NqSerializer,
-        nt::NtSerializer,
-        trig::{TrigConfig, TrigSerializer},
+        nq::NQuadsSerializer,
+        nt::NTriplesSerializer,
+        trig::{TriGConfig, TriGSerializer},
         turtle::{TurtleConfig, TurtleSerializer},
     },
     xml::serializer::{RdfXmlConfig, RdfXmlSerializer},
@@ -102,11 +102,11 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
             serialize_quads(quads, ser)
         }
         Format::NQuads | Format::GeneralizedNQuads => {
-            let ser = NqSerializer::new(out);
+            let ser = NQuadsSerializer::new(out);
             serialize_quads(quads, ser)
         }
         Format::NTriples => {
-            let ser = NtSerializer::new(out);
+            let ser = NTriplesSerializer::new(out);
             serialize_triples(quads, ser)
         }
         Format::RdfXml => {
@@ -116,13 +116,13 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
             serialize_triples(quads, ser)
         }
         Format::TriG => {
-            let mut config = TrigConfig::new().with_pretty(!args.options.no_pretty);
+            let mut config = TriGConfig::new().with_pretty(!args.options.no_pretty);
             if let Some(prefixes) = args.options.prefixes.take() {
-                let mut prefix_map = TrigConfig::default_prefix_map();
+                let mut prefix_map = TriGConfig::default_prefix_map();
                 prefix_map.extend(prefixes);
                 config = config.with_own_prefix_map(prefix_map);
             }
-            let ser = TrigSerializer::new_with_config(out, config);
+            let ser = TriGSerializer::new_with_config(out, config);
             serialize_quads(quads, ser)
         }
         Format::Turtle => {

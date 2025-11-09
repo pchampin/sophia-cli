@@ -239,12 +239,13 @@ fn parse_read<R: std::io::Read>(
     let bufread = BufReader::new(read);
     let quads = match format {
         GeneralizedNQuads => {
-            let parser = GNQuadsParser {};
+            let parser = GNQuadsParser::new();
             let quads = QuadParser::parse(&parser, bufread);
             QuadIter::from_quad_source(quads)
         }
         GeneralizedTriG => {
-            let parser = GTriGParser { base: Some(base) };
+            let parser = GTriGParser::new()
+                .with_base(Some(base.map_unchecked(Box::from).to_iri_ref().to_base()));
             let quads = QuadParser::parse(&parser, bufread);
             QuadIter::from_quad_source(quads)
         }
@@ -270,12 +271,12 @@ fn parse_read<R: std::io::Read>(
             }
         }
         NQuads => {
-            let parser = NQuadsParser {};
+            let parser = NQuadsParser::new();
             let quads = QuadParser::parse(&parser, bufread);
             QuadIter::from_quad_source(quads)
         }
         NTriples => {
-            let parser = NTriplesParser {};
+            let parser = NTriplesParser::new();
             let triples = TripleParser::parse(&parser, bufread);
             QuadIter::from_quad_source(triples.to_quads())
         }
@@ -285,12 +286,14 @@ fn parse_read<R: std::io::Read>(
             QuadIter::from_quad_source(triples.to_quads())
         }
         TriG => {
-            let parser = TriGParser { base: Some(base) };
+            let parser = TriGParser::new()
+                .with_base(Some(base.map_unchecked(Box::from).to_iri_ref().to_base()));
             let quads = QuadParser::parse(&parser, bufread);
             QuadIter::from_quad_source(quads)
         }
         Turtle => {
-            let parser = TurtleParser { base: Some(base) };
+            let parser = TurtleParser::new()
+                .with_base(Some(base.map_unchecked(Box::from).to_iri_ref().to_base()));
             let triples = TripleParser::parse(&parser, bufread);
             QuadIter::from_quad_source(triples.to_quads())
         }
