@@ -51,7 +51,9 @@ pub fn run(quads: QuadIter, args: Args) -> Result<()> {
     log::trace!("query args: {args:#?}");
     let dataset: FastDataset = quads.collect_quads()?;
     let sparql = SparqlWrapper(&dataset);
-    match sparql.query(&args.query[..]).context("SPARQL error")? {
+    let query = sparql.prepare_query(&args.query[..]).context("SPARQL parse error")?;
+    log::debug!("{:#?}", query);
+    match sparql.query(&query).context("SPARQL eval error")? {
         SparqlResult::Bindings(bindings) => handle_bindings(bindings, args)?,
         SparqlResult::Boolean(response) => handle_boolean(response, args)?,
         SparqlResult::Triples(triples) => handle_triples(triples, args)?,
