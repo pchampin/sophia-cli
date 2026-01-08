@@ -49,6 +49,11 @@ Convert an JSON-LD file in turtle:
 sop parse file.jsonld ! serialize -o file.ttl
 ```
 
+Convert an JSON-LD file in turtle and RDF/XML
+```
+sop parse file.jsonld ! serialize -o file.ttl ! serialize -o file.rdf
+```
+
 Run a SPARQL query over a file retrieved from the web
 (**caveat**: SPARQL support is *very* partial at the moment)
 ```

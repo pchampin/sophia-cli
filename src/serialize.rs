@@ -3,7 +3,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use sophia::{
     api::{
         prefix::PrefixMapPair,
@@ -24,7 +24,13 @@ use sophia::{
     xml::serializer::{RdfXmlConfig, RdfXmlSerializer},
 };
 
-use crate::common::{format::Format, prefix_map::parse_prefix_map, quad_iter::QuadIter};
+use crate::common::{
+    format::Format,
+    pipe::PipeSubcommand,
+    prefix_map::parse_prefix_map,
+    quad_handler::QuadHandler,
+    quad_iter::{QuadIter, QuadIterItem},
+};
 
 /// Serialize quads to an RDF concrete syntax
 #[derive(clap::Args, Clone, Debug)]
@@ -34,6 +40,9 @@ pub struct Args {
 
     #[command(flatten)]
     pub(crate) options: SerializerOptions,
+
+    #[command(subcommand)]
+    pub(crate) pipeline: Option<PipeSubcommand>,
 }
 
 #[derive(clap::Args, Clone, Debug)]
@@ -54,7 +63,7 @@ pub struct SerializerOptions {
     /// Prefix map expressed as PREFIX:URI,PREFIX:URI,...
     ///
     /// Available for Turtle, TriG.
-    #[arg(short, long, value_parser=parse_prefix_map, verbatim_doc_comment)]
+    #[arg(short, long, value_parser=parse_prefix_map, env="SOP_PREFIXES", verbatim_doc_comment)]
     prefixes: Option<PrefixMap>,
 
     /// Disable pretty-printing
@@ -66,13 +75,46 @@ pub struct SerializerOptions {
 
 type PrefixMap = Vec<PrefixMapPair>;
 
-pub fn run(quads: QuadIter, args: Args) -> Result<()> {
+pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
     log::trace!("serialize args: {args:#?}");
-    match args.main.output.as_ref() {
-        None => serialize_to_write(quads, args, stdout()),
-        Some(filename) => {
-            let file = std::fs::File::create(filename)?;
-            serialize_to_write(quads, args, file)
+    if let Some(pipeline) = args.pipeline.take() {
+        let Some(filename) = args.main.output.as_ref() else {
+            bail!("Can only pipe 'serialize' to sub-command if --output is specified.")
+        };
+        let file = std::fs::File::create(filename)?;
+        let (tx, rx) = std::sync::mpsc::channel();
+        let tee_thread = std::thread::spawn(|| {
+            serialize_to_write(
+                QuadIter::new(rx.into_iter().map(QuadIterItem::Ok)),
+                args,
+                file,
+            )
+        });
+        let handler = QuadHandler::new(Some(pipeline));
+        let ret = handler.handle_quads(QuadIter::new(quads.inspect(|res| {
+            if let Ok(quad) = res {
+                tx.send(quad.clone())
+                    .map_err(|err| log::warn!("{err}"))
+                    .unwrap();
+            }
+        })));
+        drop(tx); // hang up the channel, so that tee_thread stops after empying it
+        if let Err(err) = tee_thread.join().unwrap() {
+            log::warn!(
+                "{err}{}",
+                err.source()
+                    .map(|err| format!(", caused by: {err}"))
+                    .unwrap_or("".into())
+            );
+        }
+        ret
+    } else {
+        match args.main.output.as_ref() {
+            None => serialize_to_write(quads, args, stdout()),
+            Some(filename) => {
+                let file = std::fs::File::create(filename)?;
+                serialize_to_write(quads, args, file)
+            }
         }
     }
 }

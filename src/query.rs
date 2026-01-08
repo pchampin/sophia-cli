@@ -68,7 +68,7 @@ fn handle_bindings(bindings: Bindings<FastDataset>, args: Args) -> Result<()> {
     if let Some(pipeline) = args.pipeline {
         // TODO combine the check and the extraction on indices
         let Some(extractor) = QuadExtractor::try_new(&vars) else {
-            bail!("Can not only pipe bindings to sub-command if variables are ?s, ?p, ?o and optionally ?g.")
+            bail!("Can only pipe bindings to sub-command if variables are ?s, ?p, ?o and optionally ?g.")
         };
         let handler = QuadHandler::new(Some(pipeline));
         handler.handle_quads(QuadIter::new(bindings.into_iter().filter_map(

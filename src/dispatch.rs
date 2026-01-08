@@ -149,6 +149,7 @@ fn do_dispatch(dataset: &LightDataset, gn: &SimpleTerm, path: &str, args: &Args)
             output: None,
         },
         options: args.options.clone(),
+        pipeline: None,
     };
 
     let dest = args.destination.join(path);
