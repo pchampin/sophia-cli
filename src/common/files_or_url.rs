@@ -65,18 +65,14 @@ impl IntoIterator for FilesOrUrl {
     }
 }
 
+#[derive(Default)]
 pub enum IntoIter {
+    #[default]
     End,
     File(PathBuf),
     GlobFirst(Result<PathBuf, GlobError>, Paths),
     GlobRest(Paths),
     Url(Url),
-}
-
-impl Default for IntoIter {
-    fn default() -> Self {
-        Self::End
-    }
 }
 
 impl Iterator for IntoIter {
