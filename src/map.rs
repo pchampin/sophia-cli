@@ -10,48 +10,23 @@ use crate::common::{pipe::PipeSubcommand, quad_handler::QuadHandler, quad_iter::
 /// Transform each quad based on SPARQL expressions
 ///
 /// In the expression, ?s, ?p, ?o and ?g are bound to the subject, predicate,
-/// object and graph name of the quad, respectively.
+/// object, and graph name of the quad, respectively.
 #[derive(clap::Args, Clone, Debug)]
-#[command(verbatim_doc_comment)]
 pub struct Args {
     /// SPARQL expression to map subjects to
-    #[arg(
-        short,
-        long,
-        default_value = "?s",
-        value_name = "EXPRESSION",
-        verbatim_doc_comment
-    )]
+    #[arg(short, long, default_value = "?s", value_name = "EXPRESSION")]
     subject: String,
 
     /// SPARQL expression to map subjects to
-    #[arg(
-        short,
-        long,
-        default_value = "?p",
-        value_name = "EXPRESSION",
-        verbatim_doc_comment
-    )]
+    #[arg(short, long, default_value = "?p", value_name = "EXPRESSION")]
     predicate: String,
 
     /// SPARQL expression to map subjects to
-    #[arg(
-        short,
-        long,
-        default_value = "?o",
-        value_name = "EXPRESSION",
-        verbatim_doc_comment
-    )]
+    #[arg(short, long, default_value = "?o", value_name = "EXPRESSION")]
     object: String,
 
     /// SPARQL expression to map subjects to
-    #[arg(
-        short,
-        long,
-        default_value = "?g",
-        value_name = "EXPRESSION",
-        verbatim_doc_comment
-    )]
+    #[arg(short, long, default_value = "?g", value_name = "EXPRESSION")]
     graph: String,
 
     // TODO add an option to only produce strict RDF triples

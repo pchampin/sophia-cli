@@ -17,10 +17,9 @@ use crate::common::{
 ///
 /// See also the `absolutize` subcommand.
 #[derive(clap::Args, Clone, Debug)]
-#[command(verbatim_doc_comment)]
 pub struct Args {
     /// Base IRI
-    #[arg(value_parser = |txt: &str| Iri::new(txt.to_string()), verbatim_doc_comment)]
+    #[arg(value_parser = |txt: &str| Iri::new(txt.to_string()))]
     base: Iri<String>,
 
     /// How many parent level to relativize against.
@@ -28,7 +27,7 @@ pub struct Args {
     /// For example, if 0, no IRI reference starting with '..' will be generated.
     /// If 2, IRI references starting with '..' or '../..' may be generated,
     /// but not with '../../..' .
-    #[arg(short, long, default_value = "0", verbatim_doc_comment)]
+    #[arg(short, long, default_value = "0")]
     parents: u8,
 
     #[command(subcommand)]

@@ -17,10 +17,9 @@ use crate::common::{
 ///
 /// See also the `relativize` subcommand.
 #[derive(clap::Args, Clone, Debug)]
-#[command(verbatim_doc_comment)]
 pub struct Args {
     /// Base IRI
-    #[arg(value_parser = |txt: &str| Iri::new(txt.to_string()), verbatim_doc_comment)]
+    #[arg(value_parser = |txt: &str| Iri::new(txt.to_string()))]
     base: Iri<String>,
 
     #[command(subcommand)]

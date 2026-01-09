@@ -22,7 +22,8 @@ use crate::common::{
 ///
 /// The result can be piped to subcommands if
 /// - the query is a CONSTRUCT or a DESCRIBED query, or
-/// - the query is a SELECT query with variables ?s, ?p, ?o and (optionally) ?g.
+/// - the query is a SELECT query with variables ?s, ?p, ?o,
+///   and (optionally) ?g.
 #[derive(clap::Args, Clone, Debug)]
 #[command(verbatim_doc_comment)]
 pub struct Args {
@@ -40,7 +41,7 @@ pub struct Args {
     ///
     /// The result of the query will also not be printed to the output.
     /// This flag is ignored if query is not ASK.
-    #[arg(short, long, verbatim_doc_comment)]
+    #[arg(short, long)]
     status: bool,
 
     #[command(subcommand)]

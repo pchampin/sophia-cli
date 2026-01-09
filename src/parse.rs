@@ -37,7 +37,6 @@ pub struct Args {
     ///
     /// To parse multiple files or URLs, use `--multiple` instead.
     /// Otherwise, defaults to stdin.
-    #[arg(verbatim_doc_comment)]
     file_or_url: Option<FileOrUrl>,
 
     /// Multiple filenames, glob patterns or URLs, terminated with 'm-'
@@ -46,22 +45,20 @@ pub struct Args {
 
     /// Format to parse
     ///
-    /// When parsing from a single source, this option overrides any format that
-    /// could be guessed from the filename or HTTP headers.
+    /// When parsing from a single source,
+    /// this option overrides any format that could be guessed from the filename or HTTP headers.
     ///
     /// When parsing multiple sources (with the --multiple argument),
-    /// this option is only used on files whose format can not be guessed from
-    /// their extension.
-    #[arg(short, long, verbatim_doc_comment)]
+    /// this option is only used on files whose format can not be guessed from their extension.
+    #[arg(short, long)]
     format: Option<Format>,
 
     /// Base IRI against which relative IRIs will be resolve
     ///
-    /// If omitted, defaults to the filename/URL from which the data was
-    /// loaded.
+    /// If omitted, defaults to the filename/URL from which the data was loaded.
     ///
     /// Does not apply to N-Quands, N-Triples or Generalized N-Quads.
-    #[arg(short, long, value_parser = |txt: &str| Iri::new(txt.to_string()), verbatim_doc_comment)]
+    #[arg(short, long, value_parser = |txt: &str| Iri::new(txt.to_string()))]
     base: Option<Iri<String>>,
 
     /// Whether to relativize parsed IRIs against the source IRI.
@@ -71,8 +68,8 @@ pub struct Args {
     ///
     /// For example, `-r` will not generate any relative IRI reference starting with '..'.
     /// `-r 2` would generate relative IRI references starting with '..' or '../..',
-    /// but not with `../../..`
-    #[arg(short, long, verbatim_doc_comment)]
+    /// but not with `../../..`.
+    #[arg(short, long)]
     relativize: Option<Option<u8>>,
 
     #[command(flatten)]
@@ -89,25 +86,19 @@ pub struct ParserOptions {
     ///
     /// Only applies to JSON-LD and YAML-LD.
     ///
-    /// Every file or subdirectory `ITEM` of that directory is interpreted as
-    /// a local cache for the `https://ITEM/` namespace.
-    #[arg(
-        short = 'l',
-        long,
-        id = "DIR",
-        env = "DOCUMENT_LOADER_CACHE",
-        verbatim_doc_comment
-    )]
+    /// Every file or subdirectory `ITEM` of that directory is interpreted as a local cache for the `https://ITEM/` namespace.
+    #[arg(short = 'l', long, id = "DIR", env = "DOCUMENT_LOADER_CACHE")]
     loader_local: Option<PathBuf>,
 
     /// Fetch unknown context IRIs as URLs.
     ///
     /// Only applies to JSON-LD and YAML-LD.
     ///
-    /// This is not the default behavior, because fetching unknown contexts
-    /// from the web (or the filesystem) is usually not fit for production.
+    /// This is not the default behavior,
+    /// because fetching unknown contexts from the web (or the filesystem)
+    /// is usually not fit for production.
     /// Consider using `--loader-local` instead.
-    #[arg(short = 'u', long, verbatim_doc_comment)]
+    #[arg(short = 'u', long)]
     loader_urls: bool,
 }
 

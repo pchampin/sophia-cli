@@ -37,21 +37,18 @@ pub struct Args {
 
     /// Hash function to use (supported: SHA-256, SHA-384)
     ///
-    /// Default depends on c14n function; some c14n function may not support
-    /// all hash functions.
+    /// Default depends on c14n function; some c14n function may not support all hash functions.
     #[arg(
         short = 'H',
         long,
         default_value_t = HashFunctionId::Sha256,
-        verbatim_doc_comment
     )]
     hash_function: HashFunctionId,
 
     /// Resistance to "poison graphs"
     ///
-    /// Higher value means that the c14n will stop earlier when complex
-    /// graphs are encountered.
-    #[arg(short, long, default_value_t = FiniteNonNegativeF64(1.0), verbatim_doc_comment)]
+    /// Higher value means that the c14n will stop earlier when complex graphs are encountered.
+    #[arg(short, long, default_value_t = FiniteNonNegativeF64(1.0))]
     poison_resistance: FiniteNonNegativeF64,
 }
 

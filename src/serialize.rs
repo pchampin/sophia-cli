@@ -63,13 +63,13 @@ pub struct SerializerOptions {
     /// Prefix map expressed as PREFIX:URI,PREFIX:URI,...
     ///
     /// Available for Turtle, TriG.
-    #[arg(short, long, value_parser=parse_prefix_map, env="SOP_PREFIXES", verbatim_doc_comment)]
+    #[arg(short, long, value_parser=parse_prefix_map, env="SOP_PREFIXES")]
     prefixes: Option<PrefixMap>,
 
     /// Disable pretty-printing
     ///
     /// Available for JSON-LD, RDF/XML, Turtle, TriG.
-    #[arg(short = 'P', long, verbatim_doc_comment)]
+    #[arg(short = 'P', long)]
     no_pretty: bool,
 }
 

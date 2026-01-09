@@ -14,7 +14,6 @@ use crate::common::{pipe::PipeSubcommand, quad_handler::QuadHandler, quad_iter::
 /// In the expression, ?s, ?p, ?o and ?g are bound to the subject, predicate,
 /// object and graph name of the quad, respectively.
 #[derive(clap::Args, Clone, Debug)]
-#[command(verbatim_doc_comment)]
 pub struct Args {
     /// SPARQL expression
     #[arg()]

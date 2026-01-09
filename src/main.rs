@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::Parser;
+use clap::{builder::styling, Parser};
 use clap_verbosity::InfoLevel;
 use common::quad_iter::QuadIter;
 use log::LevelFilter;
@@ -17,9 +17,15 @@ mod query;
 mod relativize;
 mod serialize;
 
+const STYLES: styling::Styles = styling::Styles::styled()
+    .header(styling::AnsiColor::Green.on_default().bold())
+    .usage(styling::AnsiColor::Green.on_default().bold())
+    .literal(styling::AnsiColor::Blue.on_default().bold())
+    .placeholder(styling::AnsiColor::Cyan.on_default());
+
 /// Swiss-army knife for processing RDF and Linked Data.
 #[derive(Parser, Debug)]
-#[command(version, about, disable_help_subcommand = true)]
+#[command(version, about, disable_help_subcommand = true, max_term_width = 100, styles = STYLES)]
 struct CmdArgs {
     #[command(flatten)]
     verbose: common::verbosity::Verbosity<InfoLevel>,

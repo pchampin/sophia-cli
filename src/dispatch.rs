@@ -41,7 +41,7 @@ use crate::{
 #[derive(clap::Args, Clone, Debug)]
 pub struct Args {
     /// IRI to be used as root for dispatching
-    #[arg(value_parser = |txt: &str| Iri::new(txt.to_string()), verbatim_doc_comment)]
+    #[arg(value_parser = |txt: &str| Iri::new(txt.to_string()))]
     root: Iri<String>,
 
     /// Directory to which graphs are dispatched
