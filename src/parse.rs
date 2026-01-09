@@ -11,8 +11,9 @@ use sophia::{
         parser::{QuadParser, TripleParser},
         source::TripleSource,
     },
-    iri::{relativize::Relativizer, resolve::BaseIri, Iri},
+    iri::{relativize::Relativizer, resolve::BaseIri, AsIriRef, Iri},
     jsonld::{JsonLdOptions, JsonLdParser},
+    term::ArcTerm,
     turtle::parser::{
         gnq::GNQuadsParser, gtrig::GTriGParser, nq::NQuadsParser, nt::NTriplesParser,
         trig::TriGParser, turtle::TurtleParser,
@@ -60,6 +61,14 @@ pub struct Args {
     /// Does not apply to N-Quands, N-Triples or Generalized N-Quads.
     #[arg(short, long, value_parser = |txt: &str| Iri::new(txt.to_string()))]
     base: Option<Iri<String>>,
+
+    /// If present, parse the default graph of each source into a named_graph, named after the source.
+    ///
+    /// Note that this is not entirely preserving the provenance of triples,
+    /// since quads with an explicit graph name will not be modified.
+    /// Thus, if two sources use named graphs with the same name, their quads will be merged.
+    #[arg(short = 'g', long)]
+    named_graph: bool,
 
     /// Whether to relativize parsed IRIs against the source IRI.
     ///
@@ -157,7 +166,15 @@ fn parse_stdin(args: Args, handler: QuadHandler) -> std::result::Result<(), Erro
         .base
         .unwrap_or_else(|| Iri::new_unchecked("x-stdin://".into()));
     let rel = make_relativizer(&base, args.relativize);
-    parse_read(read, format, base, rel, args.options, handler)
+    parse_read(
+        read,
+        format,
+        base,
+        args.named_graph,
+        rel,
+        args.options,
+        handler,
+    )
 }
 
 fn parse_file(
@@ -185,7 +202,15 @@ fn parse_file(
         None => filename_to_iri(filename)?,
     };
     let rel = make_relativizer(&base, args.relativize);
-    parse_read(read, format, base, rel, args.options, handler)
+    parse_read(
+        read,
+        format,
+        base,
+        args.named_graph,
+        rel,
+        args.options,
+        handler,
+    )
 }
 
 fn parse_url(
@@ -216,18 +241,28 @@ fn parse_url(
             None => Err(Error::msg("Cannot guess format for URL {url}")),
         }?,
     };
-    parse_read(resp, format, base, rel, args.options, handler)
+    parse_read(
+        resp,
+        format,
+        base,
+        args.named_graph,
+        rel,
+        args.options,
+        handler,
+    )
 }
 
 fn parse_read<R: std::io::Read>(
     read: R,
     format: Format,
     base: Iri<String>,
+    named_graph: bool,
     mut relativizer: Option<Relativizer<String>>,
     options: ParserOptions,
     handler: QuadHandler,
 ) -> Result<()> {
     let bufread = BufReader::new(read);
+    let graph_name = named_graph.then(|| ArcTerm::Iri(base.as_iri_ref().map_unchecked(Arc::from)));
     let quads = match format {
         GeneralizedNQuads => {
             let parser = GNQuadsParser::new();
@@ -292,6 +327,17 @@ fn parse_read<R: std::io::Read>(
     let quads = match relativizer.take() {
         None => quads,
         Some(rel) => rel.relativize_iter(quads),
+    };
+    let quads = match graph_name {
+        None => quads,
+        Some(gn) => QuadIter::new(quads.map(move |res| {
+            res.map(|mut q| {
+                if q.1.is_none() {
+                    q.1 = Some(gn.clone());
+                };
+                q
+            })
+        })),
     };
     handler.handle_quads(quads)
 }
