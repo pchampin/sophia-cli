@@ -8,7 +8,7 @@ use sophia::{
         term::Term,
     },
     inmem::{dataset::FastDataset, index::TermIndexFullError},
-    sparql::{Bindings, ResultTerm, SparqlWrapper},
+    sparql::{Bindings, ResultTerm, SparqlWrapper, SparqlWrapperError},
     term::ArcTerm,
 };
 
@@ -125,7 +125,7 @@ fn handle_boolean(response: bool, args: Args) -> Result<()> {
 }
 
 fn handle_triples(
-    triples: Box<dyn Iterator<Item = Result<[ResultTerm; 3], TermIndexFullError>>>,
+    triples: impl Iterator<Item = Result<[ResultTerm; 3], SparqlWrapperError<TermIndexFullError>>>,
     args: Args,
 ) -> Result<()> {
     let handler = QuadHandler::new(args.pipeline);
