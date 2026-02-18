@@ -124,12 +124,14 @@ fn handle_bindings<D: Recognized, R: RuleSet>(
             },
         )))
     } else {
-        if !args.no_headers {
+        if !args.no_headers && !vars.is_empty() {
             println!("?{}", vars.join("\t?"));
         }
 
         let mut seps = vec!["\t"; vars.len()];
-        seps[vars.len() - 1] = "\n";
+        if !vars.is_empty() {
+            seps[vars.len() - 1] = "";
+        }
 
         for res in bindings {
             for (opt, sep) in res?.into_iter().zip(&seps) {
@@ -138,6 +140,7 @@ fn handle_bindings<D: Recognized, R: RuleSet>(
                 }
                 print!("{sep}");
             }
+            println!();
         }
         Ok(())
     }
