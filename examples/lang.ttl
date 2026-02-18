@@ -1,0 +1,6 @@
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix ex: <http://example.org/> .
+
+ex:alice foaf:name "Alice"@en , "Alix"@fr, "Alicia"@es .
+ex:bob foaf:name "Bob"@en, "Robert"@fr .
+ex:charlie foaf:name "Charlie" . # No language tag
