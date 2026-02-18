@@ -1,5 +1,5 @@
-Semantic Operation Pipeline
-===========================
+sop: Semantic Operation Pipeline
+================================
 
 `sop` aims to be a swiss-army knife for processing RDF and Linked Data on the command line.
 
@@ -46,15 +46,17 @@ This is very similar to **functional programming** concepts found in languages l
 - `filter` works like `Array.prototype.filter()`: it keeps only the quads that match the expression.
 - `map` works like `Array.prototype.map()`: it transforms each quad into a new one.
 
-### Chaining examples
-
 You can chain multiple operations together to perform complex transformations.
 Each step in the pipeline receives the quads produced by the *previous* step.
 
-Swap subject and object for all triples, then filter for a specific predicate:
+Example: swap subject and object for all triples, then filter for a specific predicate:
 ```bash
 sop parse examples/sample.nt ! map -s "?o" -o "?s" ! filter "?p = <http://example.org/p>" ! serialize -f nt
 ```
+### Sink subcommands
+
+Some subcommands (e.g. `canonicalize`, `null` or some forms of `query`) do not produce quads,
+so they can only appear at the end of the pipeline.
 
 ## Quick start
 
@@ -63,18 +65,17 @@ Check that a file is valid RDF/XML
 sop parse file.rdf ! Z
 ```
 
-Convert an JSON-LD file in turtle:
+Convert a JSON-LD file in turtle:
 ```bash
 sop parse file.jsonld ! serialize -o file.ttl
 ```
 
-Convert an JSON-LD file in turtle and RDF/XML
+Convert a JSON-LD file in turtle and RDF/XML
 ```bash
 sop parse file.jsonld ! serialize -o file.ttl ! serialize -o file.rdf
 ```
 
 Run a SPARQL query over a file retrieved from the web
-(**caveat**: SPARQL support is *very* partial at the moment)
 ```bash
 sop parse http://example.org/file.ttl ! query 'SELECT ?t { [] a ?t }'
 ```
@@ -84,19 +85,24 @@ Parse multiple files using internal globbing:
 ```bash
 sop parse -m "examples/msg-*.nt" m- ! serialize -f nq
 ```
+<details>
+<summary>More about globbing</summary>
+  
+> The internal globbing support uses the [glob](https://crates.io/crates/glob) crate and supports:
+> * `?` matches any single character.
+> * `*` matches any sequence of characters (except directory separators).
+> * `**` matches any sequence of characters including directory separators.
+> * `[a-z]` matches any character in the bracketed range.
+> * `[!a-z]` matches any character NOT in the bracketed range.
 
-The internal globbing support uses the [glob](https://crates.io/crates/glob) crate and supports:
-* `?` matches any single character.
-* `*` matches any sequence of characters (except directory separators).
-* `**` matches any sequence of characters including directory separators.
-* `[a-z]` matches any character in the bracketed range.
-* `[!a-z]` matches any character NOT in the bracketed range.
-
+</details>
+  
 Read Turtle from stdin, remove all language strings that are not in English, and serialize back to Turtle:
-(The `coalesce(..., true)` trick ensures that IRIs and literals without language tags are kept.)
 ```bash
 cat examples/lang.ttl | sop parse -f ttl ! filter 'coalesce(langMatches(lang(?o), "en"), true)' ! serialize -f ttl
 ```
+> NB: The `coalesce(..., true)` trick ensures that IRIs and literals without language tags are kept.
+
 
 Produce the canonical version of a Turtle file, using a fixed base IRI:
 ```bash
@@ -104,17 +110,17 @@ sop parse examples/social.ttl --base x-dummy-base: ! canonicalize -o examples/so
 ```
 
 Add a graph name to all triples from an `.nt` file:
-(The arguments to `map` are SPARQL expressions where `?s`, `?p`, `?o` and `?g` are mapped to the corresponding component of the current quad.
-Explicit IRIs must be enclosed in `<...>`)
 ```bash
 sop parse examples/sample.nt ! map -g "<http://example.org/graph>" ! serialize -f nq
 ```
+> NB: The arguments to `map` are SPARQL expressions; that's why IRIs must be enclosed in in `<...>`.
 
-Map each triple in a graph term corresponding to its subject:
-(**note**: you might need to quote variables like `"?s"` to avoid shell expansion)
+Map each triple in a named graph named after its subject:
 ```bash
 sop parse examples/sample.nt ! map -g "?s" ! serialize -f nq
 ```
+> NB: you might need to quote variables like `"?s"` to avoid shell expansion
+
 
 Lower-case all predicate IRIs:
 ```bash
@@ -178,6 +184,10 @@ Example using aliases:
 ```bash
 sop p examples/sample.nt ! f "?p = <http://example.org/p>" ! s -f nt
 ```
+
+**IMPORTANT**: these aliases are provided for convenience,
+but not guaranteed to be stable (in particular, new subcommands may create ambiguity).
+You can use them interactively, but in reusable scripts, stick to the full names.
 
 ## Supported Formats
 
