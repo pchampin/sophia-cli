@@ -103,7 +103,7 @@ Produce the canonical version of a Turtle file, using a fixed base IRI:
 sop parse examples/social.ttl --base x-dummy-base: ! canonicalize -o examples/social.c14n.nq
 ```
 
-Add a graph name to all quads:
+Add a graph name to all triples from an `.nt` file:
 (The arguments to `map` are SPARQL expressions where `?s`, `?p`, `?o` and `?g` are mapped to the corresponding component of the current quad.
 Explicit IRIs must be enclosed in `<...>`)
 ```bash
