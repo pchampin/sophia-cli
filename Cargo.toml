@@ -18,12 +18,16 @@ serde_json = "1.0.140"
 serde_yaml = "0.9.34"
 uuid = { version = "1.16.0", features = ["v4"] }
 
+[patch.crates-io]
+# see issue https://github.com/rust-native-tls/rust-native-tls/issues/367
+native-tls = { git = "https://github.com/rust-native-tls/rust-native-tls", tag = "v0.2.16" }
+
 [dependencies.sophia]
 version = "0.9.0"
-features = ["file_url", "http_client", "jsonld", "sparql", "xml"]
+features = ["file_url", "http_client", "jsonld", "reasoner", "sparql", "xml"]
 # path = "../sophia_rs/sophia"
 git = "https://github.com/pchampin/sophia_rs.git"
-rev = "9072463"
+rev = "87c23e3"
 
 [[bin]]
 name = "sop"

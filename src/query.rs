@@ -1,4 +1,6 @@
-use anyhow::{bail, Context, Result};
+use std::convert::Infallible;
+
+use anyhow::{bail, Context, Error, Result};
 use sophia::{
     api::{
         ns::xsd,
@@ -7,7 +9,11 @@ use sophia::{
         sparql::{SparqlDataset, SparqlResult},
         term::Term,
     },
-    inmem::{dataset::FastDataset, index::TermIndexFullError},
+    reasoner::{
+        d_entailment::{self, Recognized},
+        dataset::ReasonableDataset,
+        ruleset::{self, RuleSet},
+    },
     sparql::{Bindings, ResultTerm, SparqlWrapper, SparqlWrapperError},
     term::ArcTerm,
 };
@@ -31,7 +37,27 @@ pub struct Args {
     #[arg()]
     query: String,
 
-    /// No not output column headers (variable names) for bindings
+    /// Entailement regime to apply, one of 'simple', 'rdf' or 'rdfs' (defaults to 'simple')
+    #[arg(short = 'r', default_value = "simple")]
+    reasoning: EntailmentRegime,
+
+    /// Whether common datatypes must be *recognized* (as defined by RDF 1.2 Semantics).
+    ///
+    /// When a datatype is recognized,
+    /// literals of that datatype are treated independently of their syntactic representation.
+    /// For example, `42` and `042` will be considered *identical* (not just equal).
+    ///
+    /// The datatypes recognized when this option is enabled are:
+    ///
+    /// - all datatypes required by RDF semantics: rdf:langString, rdf:dirLangString xsd:string
+    ///
+    /// - all datatypes required by SPARQL Query: xsd:integer xsd:decimal xsd:float xsd:double xsd:string xsd:boolean xsd:dateTime xsd:nonPositiveInteger xsd:negativeInteger xsd:long xsd:int xsd:short xsd:byte xsd:nonNegativeInteger xsd:unsignedLong xsd:unsignedInt xsd:unsignedShort xsd:unsignedByte xsd:positiveInteger
+    ///
+    /// More datatypes may be supported in the future.
+    #[arg(short = 'd')]
+    datatypes: bool,
+
+    /// Do not output column headers (variable names) for bindings
     ///
     /// This flag is ignored if query is not SELECT.
     #[arg(short = 'H', long)]
@@ -50,7 +76,23 @@ pub struct Args {
 
 pub fn run(quads: QuadIter, args: Args) -> Result<()> {
     log::trace!("query args: {args:#?}");
-    let dataset: FastDataset = quads.collect_quads()?;
+    if args.datatypes {
+        run_with_d::<d_entailment::Sparql>(quads, args)
+    } else {
+        run_with_d::<d_entailment::Nothing>(quads, args)
+    }
+}
+
+pub fn run_with_d<D: Recognized>(quads: QuadIter, args: Args) -> Result<()> {
+    match args.reasoning {
+        EntailmentRegime::Simple => run_with_d_r::<D, ruleset::Simple>(quads, args),
+        EntailmentRegime::Rdf => run_with_d_r::<D, ruleset::Rdf>(quads, args),
+        EntailmentRegime::Rdfs => run_with_d_r::<D, ruleset::Rdfs>(quads, args),
+    }
+}
+
+pub fn run_with_d_r<D: Recognized, R: RuleSet>(quads: QuadIter, args: Args) -> Result<()> {
+    let dataset: ReasonableDataset<D, R> = quads.collect_quads()?;
     let sparql = SparqlWrapper(&dataset);
     let query = sparql
         .prepare_query(&args.query[..])
@@ -64,7 +106,10 @@ pub fn run(quads: QuadIter, args: Args) -> Result<()> {
     Ok(())
 }
 
-fn handle_bindings(bindings: Bindings<FastDataset>, args: Args) -> Result<()> {
+fn handle_bindings<D: Recognized, R: RuleSet>(
+    bindings: Bindings<ReasonableDataset<D, R>>,
+    args: Args,
+) -> Result<()> {
     let vars = bindings.variables();
     if let Some(pipeline) = args.pipeline {
         // TODO combine the check and the extraction on indices
@@ -125,7 +170,7 @@ fn handle_boolean(response: bool, args: Args) -> Result<()> {
 }
 
 fn handle_triples(
-    triples: impl Iterator<Item = Result<[ResultTerm; 3], SparqlWrapperError<TermIndexFullError>>>,
+    triples: impl Iterator<Item = Result<[ResultTerm; 3], SparqlWrapperError<Infallible>>>,
     args: Args,
 ) -> Result<()> {
     let handler = QuadHandler::new(args.pipeline);
@@ -174,5 +219,28 @@ impl QuadExtractor {
             ],
             self.ig.and_then(|ig| b[ig].take().map(ResultTerm::unwrap)),
         ))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+enum EntailmentRegime {
+    #[default]
+    Simple,
+    Rdf,
+    Rdfs,
+}
+
+impl std::str::FromStr for EntailmentRegime {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "simple" => Ok(Self::Simple),
+            "rdf" => Ok(Self::Rdf),
+            "rdfs" => Ok(Self::Rdfs),
+            _ => Err(Error::msg(format!(
+                "Unrecognized entailmement regime: {s:?}"
+            ))),
+        }
     }
 }
