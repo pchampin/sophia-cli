@@ -7,6 +7,69 @@ sop: Semantic Operation Pipeline
 or as a shortcut for [Sophia](https://github.com/pchampin/sophia_rs),
 the library it is based on.
 
+## Table of content
+
+* [Quick start](#quick-start)
+* [Build from source](#build-from-source)
+* [The pipeline concept](#the-pipeline-concept)
+* [Advanced uses](#advanced-uses)
+* [Supported formats](#supported-formats)
+
+---
+
+## Quick start
+
+Check that a file is valid RDF/XML
+```bash
+sop parse file.rdf ! Z
+```
+
+Convert a JSON-LD file in turtle:
+```bash
+sop parse file.jsonld ! serialize -o file.ttl
+```
+
+Convert a JSON-LD file in turtle and RDF/XML
+```bash
+sop parse file.jsonld ! serialize -o file.ttl ! serialize -o file.rdf
+```
+
+Run a SPARQL query over a file retrieved from the web
+```bash
+sop parse http://example.org/file.ttl ! query 'SELECT ?t { [] a ?t }'
+```
+
+Parse multiple files using internal globbing:
+(Useful when the number of files exceeds the shell's argument limit. Note the `m-` terminator)
+```bash
+sop parse -m "examples/msg-*.nt" m-
+```
+<details>
+<summary>More about globbing</summary>
+  
+> The internal globbing support uses the [glob](https://crates.io/crates/glob) crate and supports:
+> * `?` matches any single character.
+> * `*` matches any sequence of characters (except directory separators).
+> * `**` matches any sequence of characters including directory separators.
+> * `[a-z]` matches any character in the bracketed range.
+> * `[!a-z]` matches any character NOT in the bracketed range.
+
+</details>
+  
+Read Turtle from stdin, remove all language strings that are not in English, and serialize back to Turtle:
+```bash
+cat examples/lang.ttl | sop parse -f ttl ! filter 'coalesce(langMatches(lang(?o), "en"), true)' ! serialize -f ttl
+```
+> NB: The `coalesce(..., true)` trick ensures that IRIs and literals without language tags are kept.
+
+
+Produce the canonical version of a Turtle file, using a fixed base IRI:
+```bash
+sop parse examples/social.ttl --base x-dummy-base: ! canonicalize -o examples/social.c14n.nq
+```
+
+---
+
 ## Build from source
 
 ### With Docker
@@ -36,8 +99,9 @@ to install it directly in your path.
 
 See https://github.com/ktk/homebrew-sop (thanks to @ktk).
 
+---
 
-## The Pipeline Concept
+## The pipeline concept
 
 `sop` works by building a **pipeline** of subcommands.
 Data (as a stream of quads) is passed from one subcommand to the next using the `!` operator.
@@ -51,83 +115,123 @@ Each step in the pipeline receives the quads produced by the *previous* step.
 
 Example: swap subject and object for all triples, then filter for a specific predicate:
 ```bash
-sop parse examples/sample.nt ! map -s "?o" -o "?s" ! filter "?p = <http://example.org/p>" ! serialize -f nt
+sop parse examples/sample.nt ! map -s "?o" -o "?s" ! filter "?p = <http://example.org/p>"
 ```
 ### Sink subcommands
 
 Some subcommands (e.g. `canonicalize`, `null` or some forms of `query`) do not produce quads,
 so they can only appear at the end of the pipeline.
 
-## Quick start
+---
 
-Check that a file is valid RDF/XML
+## Advanced uses
+
+Note that this section does not exhaustively list all available commands.
+For a complete list, use:
 ```bash
-sop parse file.rdf ! Z
+sop --help
 ```
 
-Convert a JSON-LD file in turtle:
+### The `filter` subcommand
+
+This commands keeps only quads that match certain conditions, expressed as a SPARQL expression.
+
+Example: keep only quads about Bob:
 ```bash
-sop parse file.jsonld ! serialize -o file.ttl
+sop parse examples/social.ttl ! filter "?s = <http://example.org/bob>"
 ```
 
-Convert a JSON-LD file in turtle and RDF/XML
+The variables `?s`, `?p`, `?o` and `?g` are bound to the components of the current quad.
+NB: you might need to quote variables like `"?s"` to avoid shell expansion.
+
+Note that, contrary to using the subcommand `query`,
+`filter` does not need to wait until the end of the stream to process quads.
+
+### The `map` subcommand
+
+This commands transforms each quad based on SPARQL expressions.
+
+Like the `filter` subcommand above,
+the variables `?s`, `?p`, `?o` and `?g` are bound to the components of the current quad.
+Options `-s`, `-p`, `-o` and `-g` expect an expression to transform each component.
+
+As with `filter`, and unlinke `query`,
+`map` does not need to wait until the end of the stream to process quads.
+
+Example: add a graph name to all triples from an `.nt` file:
 ```bash
-sop parse file.jsonld ! serialize -o file.ttl ! serialize -o file.rdf
+sop parse examples/sample.nt ! map -g "<http://example.org/graph>"
+```
+> NB: as the arguments to `map` are SPARQL expressions, IRIs must be enclosed in in `<...>`.
+
+Example: map each triple into a named graph named after its subject:
+```bash
+sop parse examples/sample.nt ! map -g "?s"
 ```
 
-Run a SPARQL query over a file retrieved from the web
-```bash
-sop parse http://example.org/file.ttl ! query 'SELECT ?t { [] a ?t }'
-```
-
-Parse multiple files using internal globbing:
-(Useful when the number of files exceeds the shell's argument limit. Note the `m-` terminator)
-```bash
-sop parse -m "examples/msg-*.nt" m- ! serialize -f nq
-```
-<details>
-<summary>More about globbing</summary>
-  
-> The internal globbing support uses the [glob](https://crates.io/crates/glob) crate and supports:
-> * `?` matches any single character.
-> * `*` matches any sequence of characters (except directory separators).
-> * `**` matches any sequence of characters including directory separators.
-> * `[a-z]` matches any character in the bracketed range.
-> * `[!a-z]` matches any character NOT in the bracketed range.
-
-</details>
-  
-Read Turtle from stdin, remove all language strings that are not in English, and serialize back to Turtle:
-```bash
-cat examples/lang.ttl | sop parse -f ttl ! filter 'coalesce(langMatches(lang(?o), "en"), true)' ! serialize -f ttl
-```
-> NB: The `coalesce(..., true)` trick ensures that IRIs and literals without language tags are kept.
-
-
-Produce the canonical version of a Turtle file, using a fixed base IRI:
-```bash
-sop parse examples/social.ttl --base x-dummy-base: ! canonicalize -o examples/social.c14n.nq
-```
-
-Add a graph name to all triples from an `.nt` file:
-```bash
-sop parse examples/sample.nt ! map -g "<http://example.org/graph>" ! serialize -f nq
-```
-> NB: The arguments to `map` are SPARQL expressions; that's why IRIs must be enclosed in in `<...>`.
-
-Map each triple in a named graph named after its subject:
-```bash
-sop parse examples/sample.nt ! map -g "?s" ! serialize -f nq
-```
-> NB: you might need to quote variables like `"?s"` to avoid shell expansion
-
-
-Lower-case all predicate IRIs:
+Example: lower-case all predicate IRIs:
 ```bash
 sop parse examples/social.ttl ! map -p "iri(lcase(str(?p)))" ! serialize -f ttl
 ```
 
-## JSON-LD Document loader
+### The `merge` subcommand
+
+Merge all named graphs into the default graph.
+Use `--drop` to keep ONLY the merged default graph and discard the named graphs.
+```bash
+sop parse examples/msg-1.nt ! map -g "<http://example.org/g1>" ! merge --drop
+```
+
+### The `null` subcommand
+
+Silently consume all quads and only report errors. Useful for validation.
+```bash
+sop parse examples/social.ttl ! null
+```
+
+### Subcommand aliases
+
+Most subcommands have short aliases for convenience, e.g.:
+
+* `parse`: `p`
+* `serialize`: `s`
+* `filter`: `f`
+* `map`: `ma`
+* `merge`: `me`
+* `query`: `q`
+* `canonicalize`: `c14n`, `c`
+* `null`: `n`, `Z`
+
+Example using aliases:
+```bash
+sop p examples/sample.nt ! f "?p = <http://example.org/p>" ! s -f nt
+```
+
+**IMPORTANT**: these aliases are provided for convenience,
+but not guaranteed to be stable (in particular, new subcommands may create ambiguity).
+You can use them interactively, but in reusable scripts, stick to the full names.
+
+---
+
+## Supported formats
+
+`sop` supports a wide range of RDF concrete syntaxes and their most common aliases.
+The format is automatically guessed from the file extension or HTTP headers when possible,
+but can be overridden using the `--format` (or `-f`) option.
+
+| Format | Common Aliases |
+| :--- | :--- |
+| **Turtle** | `turtle`, `ttl`, `text/turtle` |
+| **JSON-LD** | `jsonld`, `json`, `application/ld+json` |
+| **N-Triples** | `nt`, `ntriples`, `application/n-triples` |
+| **N-Quads** | `nq`, `nquads`, `application/n-quads` |
+| **TriG** | `trig`, `application/trig` |
+| **RDF/XML** | `rdf`, `xml`, `application/rdf+xml` |
+| **YAML-LD** | `yamlld`, `yml`, `yaml` |
+| **Generalized N-Quads** | `gnq`, `gn-quads` |
+| **Generalized TriG** | `gtrig`, `text/rdf+n3` |
+
+### JSON-LD document loader
 
 By default, the JSON-LD processor will only accept inline contexts.
 Two [document loaders](https://www.w3.org/TR/json-ld11-api/#remote-document-and-context-retrieval)
@@ -148,61 +252,3 @@ are available via command-line options:
 
 With both options, the local version will be used in priority.
 
-## Advanced Commands
-
-### Merge
-
-Merge all named graphs into the default graph.
-Use `--drop` to keep ONLY the merged default graph and discard the named graphs.
-```bash
-sop parse examples/msg-1.nt ! map -g "<http://example.org/g1>" ! merge --drop ! serialize -f nq
-```
-
-### Null
-
-Silently consume all quads and only report errors. Useful for validation.
-```bash
-sop parse examples/social.ttl ! null
-```
-
-## Subcommand Aliases
-
-Most subcommands have short aliases for convenience:
-
-* `parse`: `p`
-* `serialize`: `s`
-* `filter`: `f`
-* `map`: `ma`
-* `merge`: `me`
-* `query`: `q`
-* `relativize`: `r`
-* `canonicalize`: `c14n`, `c`
-* `absolutize`: `a`
-* `null`: `n`, `Z`
-
-Example using aliases:
-```bash
-sop p examples/sample.nt ! f "?p = <http://example.org/p>" ! s -f nt
-```
-
-**IMPORTANT**: these aliases are provided for convenience,
-but not guaranteed to be stable (in particular, new subcommands may create ambiguity).
-You can use them interactively, but in reusable scripts, stick to the full names.
-
-## Supported Formats
-
-`sop` supports a wide range of RDF concrete syntaxes and their most common aliases.
-The format is automatically guessed from the file extension or HTTP headers when possible,
-but can be overridden using the `--format` (or `-f`) option.
-
-| Format | Common Aliases |
-| :--- | :--- |
-| **Turtle** | `turtle`, `ttl`, `text/turtle` |
-| **JSON-LD** | `jsonld`, `json`, `application/ld+json` |
-| **N-Triples** | `nt`, `ntriples`, `application/n-triples` |
-| **N-Quads** | `nq`, `nquads`, `application/n-quads` |
-| **TriG** | `trig`, `application/trig` |
-| **RDF/XML** | `rdf`, `xml`, `application/rdf+xml` |
-| **YAML-LD** | `yamlld`, `yml`, `yaml` |
-| **Generalized N-Quads** | `gnq`, `gn-quads` |
-| **Generalized TriG** | `gtrig`, `text/rdf+n3` |
