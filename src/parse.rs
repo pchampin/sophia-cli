@@ -54,11 +54,11 @@ pub struct Args {
     #[arg(short, long)]
     format: Option<Format>,
 
-    /// Base IRI against which relative IRIs will be resolve
+    /// Base IRI against which relative IRIs will be resolved
     ///
     /// If omitted, defaults to the filename/URL from which the data was loaded.
     ///
-    /// Does not apply to N-Quands, N-Triples or Generalized N-Quads.
+    /// Does not apply to N-Quads, N-Triples or Generalized N-Quads.
     #[arg(short, long, value_parser = |txt: &str| Iri::new(txt.to_string()))]
     base: Option<Iri<String>>,
 
