@@ -14,7 +14,7 @@ pub enum PipeSubcommand {
 
     // // NB: instead, we defer the parsing of the piped command
     /// Optionally pipe quads to another subcommand
-    #[command(name = "!")]
+    #[command(name = "!", hide = cfg!(feature = "markdown-help"))]
     Pipe(PipeArgs),
 }
 

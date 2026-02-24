@@ -41,6 +41,11 @@ enum Subcommand {
 
     #[command(flatten)]
     Sink(SinkSubcommand),
+
+    // only available with the special `markdown-help` feature, useful for generating doc
+    #[cfg(feature = "markdown-help")]
+    #[command(name = "markdown-help", hide = true)]
+    MarkdownHelp,
 }
 
 /// Subcommands that can only be used on the left-hand side of a pipe (or on their own)
@@ -106,6 +111,11 @@ fn main() -> Result<()> {
     match args.subcommand {
         Source(Parse(args)) => parse::run(args),
         Sink(sink) => sink.handle_quads(quad_from_stdin()),
+        #[cfg(feature = "markdown-help")]
+        MarkdownHelp => {
+            clap_markdown::print_help_markdown::<CmdArgs>();
+            Ok(())
+        }
     }
 }
 
