@@ -28,7 +28,7 @@ version = "0.9.0"
 features = ["file_url", "http_client", "jsonld", "reasoner", "sparql", "xml"]
 # path = "../sophia_rs/sophia"
 git = "https://github.com/pchampin/sophia_rs.git"
-rev = "87c23e3"
+rev = "2dda214"
 
 [features]
 default = []
