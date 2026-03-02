@@ -1,4 +1,4 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, path::PathBuf};
 
 use anyhow::{bail, Context, Error, Result};
 use sophia::{
@@ -8,6 +8,7 @@ use sophia::{
         source::{QuadSource, TripleSource},
         sparql::{SparqlDataset, SparqlResult},
         term::Term,
+        MownStr,
     },
     reasoner::{
         d_entailment::{self, Recognized},
@@ -34,8 +35,8 @@ use crate::common::{
 #[command(verbatim_doc_comment)]
 pub struct Args {
     /// SPARQL query
-    #[arg()]
-    query: String,
+    #[command(flatten)]
+    query: QueryStringOrFile,
 
     /// Entailement regime to apply, one of 'simple', 'rdf' or 'rdfs' (defaults to 'simple')
     #[arg(short = 'r', default_value = "simple")]
@@ -74,6 +75,19 @@ pub struct Args {
     pipeline: Option<PipeSubcommand>,
 }
 
+#[derive(clap::Args, Clone, Debug)]
+#[command(verbatim_doc_comment)]
+#[group(required = true, multiple = false)]
+pub struct QueryStringOrFile {
+    /// SPARQL query
+    #[arg(group = "query_string_or_file")]
+    query: Option<String>,
+
+    /// File containing a SPARQL query
+    #[arg(short = 'q', long = "query", group = "query_string_or_file")]
+    file: Option<PathBuf>,
+}
+
 pub fn run(quads: QuadIter, args: Args) -> Result<()> {
     log::trace!("query args: {args:#?}");
     if args.datatypes {
@@ -94,9 +108,18 @@ pub fn run_with_d<D: Recognized>(quads: QuadIter, args: Args) -> Result<()> {
 pub fn run_with_d_r<D: Recognized, R: RuleSet>(quads: QuadIter, args: Args) -> Result<()> {
     let dataset: ReasonableDataset<D, R> = quads.collect_quads()?;
     let sparql = SparqlWrapper(&dataset);
-    let query = sparql
-        .prepare_query(&args.query[..])
-        .context("SPARQL parse error")?;
+    let query = {
+        let query_str: MownStr = if let Some(txt) = &args.query.query {
+            txt.as_str().into()
+        } else if let Some(path) = &args.query.file {
+            std::fs::read_to_string(path)?.into()
+        } else {
+            unreachable!()
+        };
+        sparql
+            .prepare_query(&query_str)
+            .context("SPARQL parse error")?
+    };
     log::debug!("{:#?}", query);
     match sparql.query(&query).context("SPARQL eval error")? {
         SparqlResult::Bindings(bindings) => handle_bindings(bindings, args)?,
