@@ -83,17 +83,28 @@ docker run --rm -v $(pwd):/outside sop_builder -c "cp /app/target/release/sop /o
 
 ### With Cargo
 
+#### Remote (from GitHub)
+
+To install directly into your Cargo bin path:
+
+```bash
+cargo install --locked --git https://github.com/pchampin/sophia-cli
+```
+
+#### Local (from source)
+
+Build and copy the binary manually:
+
 ```bash
 cargo build --release
 cp target/release/sop .
 ```
 
-or
+Or install it directly into your Cargo bin path:
 
 ```bash
 cargo install --path .
 ```
-to install it directly in your path.
 
 ### With Homebrew
 
