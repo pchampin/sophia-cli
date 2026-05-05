@@ -1,4 +1,4 @@
-use std::{convert::Infallible, path::PathBuf};
+use std::convert::Infallible;
 
 use anyhow::{bail, Context, Error, Result};
 use sophia::{
@@ -20,6 +20,7 @@ use sophia::{
 };
 
 use crate::common::{
+    file_or_url::FileOrUrl,
     pipe::PipeSubcommand,
     quad_handler::QuadHandler,
     quad_iter::{QuadIter, QuadIterError},
@@ -80,12 +81,12 @@ pub struct Args {
 #[group(required = true, multiple = false)]
 pub struct QueryStringOrFile {
     /// SPARQL query
-    #[arg(group = "query_string_or_file")]
+    #[arg(group = "query_string_or_url")]
     query: Option<String>,
 
-    /// File containing a SPARQL query
-    #[arg(short = 'q', long = "query", group = "query_string_or_file")]
-    file: Option<PathBuf>,
+    /// File or URL containing a SPARQL query
+    #[arg(short = 'q', long = "query", group = "query_string_or_url")]
+    file_or_url: Option<FileOrUrl>,
 }
 
 pub fn run(quads: QuadIter, args: Args) -> Result<()> {
@@ -111,8 +112,15 @@ pub fn run_with_d_r<D: Recognized, R: RuleSet>(quads: QuadIter, args: Args) -> R
     let query = {
         let query_str: MownStr = if let Some(txt) = &args.query.query {
             txt.as_str().into()
-        } else if let Some(path) = &args.query.file {
-            std::fs::read_to_string(path)?.into()
+        } else if let Some(file_or_url) = &args.query.file_or_url {
+            match file_or_url {
+                FileOrUrl::File(path) => std::fs::read_to_string(path)?.into(),
+                FileOrUrl::Url(url) => reqwest::blocking::get(url.clone())?
+                    .error_for_status()?
+                    .text()?
+                    .into(),
+                FileOrUrl::StdIn => bail!("query parameter can not be stdin"),
+            }
         } else {
             unreachable!()
         };
