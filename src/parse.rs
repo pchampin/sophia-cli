@@ -1,3 +1,12 @@
+//! Implement the `parse` subcommand
+//!
+//! ## Blank Node Labels
+//!
+//! When parsing a single file/URL, blank node labels are preserved to improve readability of the output.
+//!
+//! When parsing multiple files/URLs, blank node labels have a source-dependant suffix appended,
+//! to prevent name clashes (the original name is kept as a prefix).
+
 use std::{
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
@@ -297,12 +306,12 @@ fn parse_read<R: std::io::Read>(
             }
         }
         NQuads => {
-            let parser = NQuadsParser::new();
+            let parser = NQuadsParser::new().with_preserve_bn_labels(true); // See 'Blank Node Labels' section in this module's documentation
             let quads = QuadParser::parse(&parser, bufread);
             QuadIter::from_quad_source(quads)
         }
         NTriples => {
-            let parser = NTriplesParser::new();
+            let parser = NTriplesParser::new().with_preserve_bn_labels(true); // See 'Blank Node Labels' section in this module's documentation
             let triples = TripleParser::parse(&parser, bufread);
             QuadIter::from_quad_source(triples.to_quads())
         }
@@ -313,12 +322,14 @@ fn parse_read<R: std::io::Read>(
         }
         TriG => {
             let parser = TriGParser::new()
+                .with_preserve_bn_labels(true) // See 'Blank Node Labels' section in this module's documentation
                 .with_base(Some(base.map_unchecked(Box::from).to_iri_ref().to_base()));
             let quads = QuadParser::parse(&parser, bufread);
             QuadIter::from_quad_source(quads)
         }
         Turtle => {
             let parser = TurtleParser::new()
+                .with_preserve_bn_labels(true) // See 'Blank Node Labels' section in this module's documentation
                 .with_base(Some(base.map_unchecked(Box::from).to_iri_ref().to_base()));
             let triples = TripleParser::parse(&parser, bufread);
             QuadIter::from_quad_source(triples.to_quads())
