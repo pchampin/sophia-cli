@@ -2586,7 +2586,7 @@ dependencies = [
 [[package]]
 name = "sophia"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "sophia_api",
  "sophia_c14n",
@@ -2628,7 +2628,7 @@ dependencies = [
 [[package]]
 name = "sophia_api"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "lazy_static",
  "log",
@@ -2644,7 +2644,7 @@ dependencies = [
 [[package]]
 name = "sophia_bcp47"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "mownstr",
  "regex",
@@ -2655,7 +2655,7 @@ dependencies = [
 [[package]]
 name = "sophia_c14n"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "base64 0.22.1",
  "log",
@@ -2668,7 +2668,7 @@ dependencies = [
 [[package]]
 name = "sophia_inmem"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "sophia_api",
  "thiserror 2.0.18",
@@ -2677,7 +2677,7 @@ dependencies = [
 [[package]]
 name = "sophia_iri"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "oxiri",
  "regex",
@@ -2688,7 +2688,7 @@ dependencies = [
 [[package]]
 name = "sophia_isomorphism"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "sophia_api",
  "sophia_c14n",
@@ -2698,7 +2698,7 @@ dependencies = [
 [[package]]
 name = "sophia_jsonld"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "iref",
  "json-ld",
@@ -2717,7 +2717,7 @@ dependencies = [
 [[package]]
 name = "sophia_reasoner"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "rayon",
  "regex",
@@ -2733,7 +2733,7 @@ dependencies = [
 [[package]]
 name = "sophia_resource"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "futures-util",
  "sophia_api",
@@ -2747,7 +2747,7 @@ dependencies = [
 [[package]]
 name = "sophia_sparql"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "base16ct",
  "bigdecimal",
@@ -2774,7 +2774,7 @@ dependencies = [
 [[package]]
 name = "sophia_sparql_client"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "quick-xml 0.39.3",
  "reqwest 0.13.3",
@@ -2791,7 +2791,7 @@ dependencies = [
 [[package]]
 name = "sophia_term"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "lazy_static",
  "sophia_api",
@@ -2800,7 +2800,7 @@ dependencies = [
 [[package]]
 name = "sophia_turtle"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "regex",
  "sophia_api",
@@ -2812,7 +2812,7 @@ dependencies = [
 [[package]]
 name = "sophia_xml"
 version = "0.9.0"
-source = "git+https://github.com/pchampin/sophia_rs.git?rev=afa3510#afa35108afa704c2425f129b273399ef5fbc805a"
+source = "git+https://github.com/pchampin/sophia_rs.git?rev=d627216#d627216bfc891da05ab80b757ec4c71630e7c156"
 dependencies = [
  "log",
  "oxiri",
