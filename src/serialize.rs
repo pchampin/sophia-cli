@@ -16,8 +16,8 @@ use sophia::{
     },
     jsonld::{JsonLdOptions, JsonLdSerializer},
     turtle::serializer::{
-        nq::NQuadsSerializer,
-        nt::NTriplesSerializer,
+        nq::{NQuadsConfig, NQuadsSerializer},
+        nt::{NTriplesConfig, NTriplesSerializer},
         trig::{TriGConfig, TriGSerializer},
         turtle::{TurtleConfig, TurtleSerializer},
     },
@@ -71,6 +71,17 @@ pub struct SerializerOptions {
     /// Available for JSON-LD, RDF/XML, Turtle, TriG.
     #[arg(short = 'P', long)]
     no_pretty: bool,
+
+    /// Use the canonical for of the syntax
+    ///
+    /// Available for N-Triples, N-Quads.
+    ///
+    /// IMPORTANT: this is not the same as the RDF-CANON algorithm,
+    /// which is available with the `canonicalize` subcommand.
+    /// In particuler, this option does not constrain the order
+    /// in which triples/quads are serialized, only their format.
+    #[arg(short = 'c', long)]
+    canonical: bool,
 }
 
 type PrefixMap = Vec<PrefixMapPair>;
@@ -144,11 +155,13 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
             serialize_quads(quads, ser)
         }
         Format::NQuads | Format::GeneralizedNQuads => {
-            let ser = NQuadsSerializer::new(out);
+            let cfg = NQuadsConfig::new().with_canonical(args.options.canonical);
+            let ser = NQuadsSerializer::new_with_config(out, cfg);
             serialize_quads(quads, ser)
         }
         Format::NTriples => {
-            let ser = NTriplesSerializer::new(out);
+            let cfg = NTriplesConfig::new().with_canonical(args.options.canonical);
+            let ser = NTriplesSerializer::new_with_config(out, cfg);
             serialize_triples(quads, ser)
         }
         Format::RdfXml => {
