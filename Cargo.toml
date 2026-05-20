@@ -20,11 +20,11 @@ serde_yaml = "0.9.34"
 uuid = { version = "1.16.0", features = ["v4"] }
 
 [dependencies.sophia]
-version = "0.9.0"
-features = ["file_url", "http_client", "jsonld", "reasoner", "sparql", "xml"]
-# path = "../sophia_rs/sophia"
+# version = "0.10"
 git = "https://github.com/pchampin/sophia_rs.git"
-rev = "d627216"
+rev = "56e9461"
+# path = "../sophia_rs/sophia"
+features = ["file_url", "http_client", "jsonld", "reasoner", "sparql", "xml"]
 
 [features]
 default = []
