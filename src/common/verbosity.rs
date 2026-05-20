@@ -1,8 +1,8 @@
 //! Copy of clap_verbosity::Verbosity,
 //! only modified to *not* be a global option.
-use clap_verbosity::level_value;
 use clap_verbosity::ErrorLevel;
 use clap_verbosity::LogLevel;
+use clap_verbosity::level_value;
 
 #[derive(clap::Args, Debug, Clone, Default)]
 pub struct Verbosity<L: LogLevel = ErrorLevel> {

@@ -1,9 +1,9 @@
 use std::{
-    io::{stdout, BufWriter, Write},
+    io::{BufWriter, Write, stdout},
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use sophia::{
     api::{
         prefix::PrefixMapPair,

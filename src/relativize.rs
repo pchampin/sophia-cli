@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use sophia::{
     api::{quad::Spog, source::QuadSource},
-    iri::{is_absolute_iri_ref, relativize::Relativizer, resolve::BaseIri, Iri, IriRef},
+    iri::{Iri, IriRef, is_absolute_iri_ref, relativize::Relativizer, resolve::BaseIri},
     term::ArcTerm,
 };
 

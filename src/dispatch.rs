@@ -8,7 +8,7 @@ use sophia::{
         term::{FromTerm, SimpleTerm, Term},
     },
     inmem::dataset::LightDataset,
-    iri::{is_absolute_iri_ref, relativize::Relativizer, Iri},
+    iri::{Iri, is_absolute_iri_ref, relativize::Relativizer},
 };
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
         format::Format,
         pipe::PipeSubcommand,
         quad_handler::QuadHandler,
-        quad_iter::{quad_iter_item, QuadIter},
+        quad_iter::{QuadIter, quad_iter_item},
     },
     relativize::RelativizerExt,
     serialize::{self, SerializerArgs, SerializerOptions},
@@ -176,12 +176,13 @@ fn do_dispatch(dataset: &LightDataset, gn: &SimpleTerm, path: &str, args: &Args)
 }
 
 fn ensure_dirs(path: &Path) -> Result<()> {
-    if let Some(dir) = path.parent() {
-        if !dir.as_os_str().is_empty() && !dir.exists() {
-            ensure_dirs(dir)?;
-            log::trace!("creating {dir:?}");
-            std::fs::create_dir(dir)?;
-        }
+    if let Some(dir) = path.parent()
+        && !dir.as_os_str().is_empty()
+        && !dir.exists()
+    {
+        ensure_dirs(dir)?;
+        log::trace!("creating {dir:?}");
+        std::fs::create_dir(dir)?;
     }
     Ok(())
 }

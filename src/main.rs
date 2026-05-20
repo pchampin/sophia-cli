@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::{builder::styling, Parser};
+use clap::{Parser, builder::styling};
 use clap_verbosity::InfoLevel;
 use common::quad_iter::QuadIter;
 use log::LevelFilter;
