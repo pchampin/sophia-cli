@@ -1,14 +1,14 @@
 use std::convert::Infallible;
 
-use anyhow::{bail, Context, Error, Result};
+use anyhow::{Context, Error, Result, bail};
 use sophia::{
     api::{
+        MownStr,
         ns::xsd,
         quad::Spog,
         source::{QuadSource, TripleSource},
         sparql::{SparqlDataset, SparqlResult},
         term::Term,
-        MownStr,
     },
     reasoner::{
         d_entailment::{self, Recognized},
@@ -145,7 +145,9 @@ fn handle_bindings<D: Recognized, R: RuleSet>(
     if let Some(pipeline) = args.pipeline {
         // TODO combine the check and the extraction on indices
         let Some(extractor) = QuadExtractor::try_new(&vars) else {
-            bail!("Can only pipe bindings to sub-command if variables are ?s, ?p, ?o and optionally ?g.")
+            bail!(
+                "Can only pipe bindings to sub-command if variables are ?s, ?p, ?o and optionally ?g."
+            )
         };
         let handler = QuadHandler::new(Some(pipeline));
         handler.handle_quads(QuadIter::new(bindings.into_iter().filter_map(

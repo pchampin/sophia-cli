@@ -9,7 +9,9 @@ pub enum Format {
     GeneralizedTriG,
     JsonLd,
     NQuads,
+    NQuadsCompressed,
     NTriples,
+    NTriplesCompressed,
     RdfXml,
     TriG,
     Turtle,
@@ -28,11 +30,13 @@ impl std::str::FromStr for Format {
                 r"^( generalized-trig | gtrig | text/rdf\+n3 )$",
                 r"^( application/ld\+json | json-?ld | application/json | json )$",
                 r"^( application/ld\+yaml| yaml-?ld | ymlld | application/yaml | yaml | yml )$",
-                r"^( application/n-quads | n-?quads | nq )",
-                r"^( application/n-triples | n-?triples | nt | text/plain )",
+                r"^( application/n-quads | n-?quads | nq )$",
+                r"^( application/x-gzip | nq\.gz )$",
+                r"^( application/n-triples | n-?triples | nt | text/plain )$",
+                r"^( nt\.gz )$",
                 r"^( application/rdf\+xml | rdf | rdf/?xml | application/xml | xml )$",
-                r"^( application/trig | trig )",
-                r"^( text/turtle | turtle | ttl | application/turtle )",
+                r"^( application/trig | trig )$",
+                r"^( text/turtle | turtle | ttl | application/turtle )$",
             ])
             .ignore_whitespace(true)
             .case_insensitive(true)
@@ -45,10 +49,12 @@ impl std::str::FromStr for Format {
             Some(2) => Ok(JsonLd),
             Some(3) => Ok(YamlLd),
             Some(4) => Ok(NQuads),
-            Some(5) => Ok(NTriples),
-            Some(6) => Ok(RdfXml),
-            Some(7) => Ok(TriG),
-            Some(8) => Ok(Format::Turtle),
+            Some(5) => Ok(NQuadsCompressed),
+            Some(6) => Ok(NTriples),
+            Some(7) => Ok(NTriplesCompressed),
+            Some(8) => Ok(RdfXml),
+            Some(9) => Ok(TriG),
+            Some(10) => Ok(Format::Turtle),
             _ => Err(Error::msg(format!("Unrecognized format: {s}"))),
         }
     }
@@ -87,6 +93,7 @@ mod test {
     #[test_case("NQuads" => NQuads; "nquads cam")]
     #[test_case("nq" => NQuads)]
     #[test_case("NQ" => NQuads; "nq cap")]
+    #[test_case("nq.gz" => NQuadsCompressed)]
     #[test_case("application/n-triples" => NTriples)]
     #[test_case("n-triples" => NTriples)]
     #[test_case("N-Triples" => NTriples; "n-triples cam")]
@@ -95,6 +102,7 @@ mod test {
     #[test_case("nt" => NTriples)]
     #[test_case("NT" => NTriples; "nt cap")]
     #[test_case("text/plain" => NTriples)]
+    #[test_case("nt.gz" => NTriplesCompressed)]
     #[test_case("application/rdf+xml" => RdfXml)]
     #[test_case("rdf" => RdfXml)]
     #[test_case("RDF" => RdfXml; "rdf cap")]

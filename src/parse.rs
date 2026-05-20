@@ -13,14 +13,14 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{Error, Result, anyhow, bail};
 use rayon::prelude::*;
 use sophia::{
     api::{
         parser::{QuadParser, TripleParser},
         source::TripleSource,
     },
-    iri::{relativize::Relativizer, resolve::BaseIri, AsIriRef, Iri},
+    iri::{AsIriRef, Iri, relativize::Relativizer, resolve::BaseIri},
     jsonld::{JsonLdOptions, JsonLdParser},
     term::ArcTerm,
     turtle::parser::{
@@ -193,9 +193,22 @@ fn parse_file(
     prefer_guess: bool,
 ) -> std::result::Result<(), Error> {
     let guess_format = || {
-        filename
-            .extension()
-            .and_then(|ext| ext.to_string_lossy().parse::<Format>().ok())
+        let filename = filename.to_string_lossy();
+        let mut extensions = filename.rsplit('.');
+        let ext = extensions.next().unwrap(); // filename can not be empty
+        ext.parse::<Format>().ok().or_else(|| {
+            if ext == "gz"
+                && let Some(ext2) = extensions.next()
+            {
+                match ext2 {
+                    "nq" => Some(NQuadsCompressed),
+                    "nt" => Some(NTriplesCompressed),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
     };
     let format = if prefer_guess {
         guess_format().or(args.format)
@@ -305,15 +318,15 @@ fn parse_read<R: std::io::Read>(
                 parse_x_ld(format, options, bufread)?
             }
         }
-        NQuads => {
-            let parser = NQuadsParser::new().with_preserve_bn_labels(true); // See 'Blank Node Labels' section in this module's documentation
-            let quads = QuadParser::parse(&parser, bufread);
-            QuadIter::from_quad_source(quads)
+        NQuads => parse_nq(bufread),
+        NQuadsCompressed => {
+            let uncompressed = BufReader::new(flate2::bufread::GzDecoder::new(bufread));
+            parse_nq(uncompressed)
         }
-        NTriples => {
-            let parser = NTriplesParser::new().with_preserve_bn_labels(true); // See 'Blank Node Labels' section in this module's documentation
-            let triples = TripleParser::parse(&parser, bufread);
-            QuadIter::from_quad_source(triples.to_quads())
+        NTriples => parse_nt(bufread),
+        NTriplesCompressed => {
+            let uncompressed = BufReader::new(flate2::bufread::GzDecoder::new(bufread));
+            parse_nt(uncompressed)
         }
         RdfXml => {
             let parser = RdfXmlParser { base: Some(base) };
@@ -351,6 +364,18 @@ fn parse_read<R: std::io::Read>(
         })),
     };
     handler.handle_quads(quads)
+}
+
+fn parse_nq<'a, R: BufRead + 'a>(r: R) -> QuadIter<'a> {
+    let parser = NQuadsParser::new().with_preserve_bn_labels(true); // See 'Blank Node Labels' section in this module's documentation
+    let quads = QuadParser::parse(&parser, r);
+    QuadIter::from_quad_source(quads)
+}
+
+fn parse_nt<'a, R: BufRead + 'a>(r: R) -> QuadIter<'a> {
+    let parser = NTriplesParser::new().with_preserve_bn_labels(true); // See 'Blank Node Labels' section in this module's documentation
+    let triples = TripleParser::parse(&parser, r);
+    QuadIter::from_quad_source(triples.to_quads())
 }
 
 /// Parse JSON-LD or variants (YAML-LD)

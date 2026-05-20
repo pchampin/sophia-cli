@@ -145,8 +145,10 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
             anyhow!("Can not guess format for file {filename:?}, please specify with --format")
         })?;
     match format {
-        Format::GeneralizedTriG => {
-            todo!()
+        Format::NQuadsCompressed | Format::NTriplesCompressed => {
+            bail!(
+                "Compressed versions of N-Quads and N-Triples only supported for parsing. Use an external tool to compress sop's output instead"
+            )
         }
         Format::JsonLd => {
             let indent = if args.options.no_pretty { 0 } else { 2 };
@@ -170,7 +172,7 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
             let ser = RdfXmlSerializer::new_with_config(out, config);
             serialize_triples(quads, ser)
         }
-        Format::TriG => {
+        Format::TriG | Format::GeneralizedTriG => {
             let mut config = TriGConfig::new().with_pretty(!args.options.no_pretty);
             if let Some(prefixes) = args.options.prefixes.take() {
                 let mut prefix_map = TriGConfig::default_prefix_map();
