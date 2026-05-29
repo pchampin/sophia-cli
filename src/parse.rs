@@ -203,6 +203,7 @@ fn parse_file(
                 match ext2 {
                     "nq" => Some(NQuadsCompressed),
                     "nt" => Some(NTriplesCompressed),
+                    "ttl" => Some(TurtleCompressed),
                     _ => None,
                 }
             } else {
@@ -340,12 +341,10 @@ fn parse_read<R: std::io::Read>(
             let quads = QuadParser::parse(&parser, bufread);
             QuadIter::from_quad_source(quads)
         }
-        Turtle => {
-            let parser = TurtleParser::new()
-                .with_preserve_bn_labels(true) // See 'Blank Node Labels' section in this module's documentation
-                .with_base(Some(base.map_unchecked(Box::from).to_iri_ref().to_base()));
-            let triples = TripleParser::parse(&parser, bufread);
-            QuadIter::from_quad_source(triples.to_quads())
+        Turtle => parse_ttl(bufread, base),
+        TurtleCompressed => {
+            let uncompressed = BufReader::new(flate2::bufread::GzDecoder::new(bufread));
+            parse_ttl(uncompressed, base)
         }
     };
     let quads = match relativizer.take() {
@@ -374,6 +373,14 @@ fn parse_nq<'a, R: BufRead + 'a>(r: R) -> QuadIter<'a> {
 
 fn parse_nt<'a, R: BufRead + 'a>(r: R) -> QuadIter<'a> {
     let parser = NTriplesParser::new().with_preserve_bn_labels(true); // See 'Blank Node Labels' section in this module's documentation
+    let triples = TripleParser::parse(&parser, r);
+    QuadIter::from_quad_source(triples.to_quads())
+}
+
+fn parse_ttl<'a, R: BufRead + 'a>(r: R, base: Iri<String>) -> QuadIter<'a> {
+    let parser = TurtleParser::new()
+        .with_preserve_bn_labels(true) // See 'Blank Node Labels' section in this module's documentation
+        .with_base(Some(base.map_unchecked(Box::from).to_iri_ref().to_base()));
     let triples = TripleParser::parse(&parser, r);
     QuadIter::from_quad_source(triples.to_quads())
 }
