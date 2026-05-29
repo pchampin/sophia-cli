@@ -145,9 +145,9 @@ pub fn serialize_to_write<W: Write>(quads: QuadIter, mut args: Args, write: W) -
             anyhow!("Can not guess format for file {filename:?}, please specify with --format")
         })?;
     match format {
-        Format::NQuadsCompressed | Format::NTriplesCompressed => {
+        Format::NQuadsCompressed | Format::NTriplesCompressed | Format::TurtleCompressed => {
             bail!(
-                "Compressed versions of N-Quads and N-Triples only supported for parsing. Use an external tool to compress sop's output instead"
+                "Compressed formats only supported for parsing. Use an external tool to compress sop's output instead"
             )
         }
         Format::JsonLd => {

@@ -15,6 +15,7 @@ pub enum Format {
     RdfXml,
     TriG,
     Turtle,
+    TurtleCompressed,
     YamlLd,
 }
 
@@ -37,6 +38,7 @@ impl std::str::FromStr for Format {
                 r"^( application/rdf\+xml | rdf | rdf/?xml | application/xml | xml )$",
                 r"^( application/trig | trig )$",
                 r"^( text/turtle | turtle | ttl | application/turtle )$",
+                r"^( ttl\.gz )$",
             ])
             .ignore_whitespace(true)
             .case_insensitive(true)
@@ -55,6 +57,7 @@ impl std::str::FromStr for Format {
             Some(8) => Ok(RdfXml),
             Some(9) => Ok(TriG),
             Some(10) => Ok(Format::Turtle),
+            Some(11) => Ok(Format::TurtleCompressed),
             _ => Err(Error::msg(format!("Unrecognized format: {s}"))),
         }
     }
@@ -121,6 +124,7 @@ mod test {
     #[test_case("ttl" => Turtle)]
     #[test_case("TTL" => Turtle; "ttl cap")]
     #[test_case("application/turtle" => Turtle)]
+    #[test_case("ttl.gz" => TurtleCompressed)]
     #[test_case("application/ld+yaml" => YamlLd)]
     #[test_case("yaml-ld" => YamlLd)]
     #[test_case("YAML-LD" => YamlLd; "yaml-ld cap")]
