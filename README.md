@@ -143,6 +143,45 @@ For a complete list, use:
 sop --help
 ```
 
+### The `query` subcommand
+
+This runs a [SPARQL] query against the quads flowing through the pipeline
+(read from files, URLs or stdin by `parse`).
+
+Run an inline query over a local file:
+```bash
+sop parse examples/social.ttl ! query 'PREFIX foaf: <http://xmlns.com/foaf/0.1/> SELECT ?name WHERE { ?p a foaf:Person ; foaf:name ?name }'
+```
+
+An ASK query returns a boolean:
+```bash
+sop parse examples/social.ttl ! query 'ASK WHERE { ?s a <http://xmlns.com/foaf/0.1/Person> }'
+```
+
+The query can also be loaded from a file (or a URL) with the `-q` (`--query`)
+option, which is handy for longer or reusable queries:
+```bash
+sop parse examples/social.ttl ! query -q examples/persons.rq
+```
+
+The output depends on the query form:
+
+* **SELECT** prints a table of bindings (use `-H` to omit the header row of
+  variable names).
+* **ASK** prints `true` or `false` (use `-s`/`--status` to instead exit with an
+  error status when the result is `false`, and print nothing).
+* **CONSTRUCT** and **DESCRIBE** produce quads, so they can be piped to further
+  subcommands (e.g. `! serialize -f ttl`).
+
+For example, a CONSTRUCT result can be serialized to Turtle:
+```bash
+sop parse examples/social.ttl ! query 'PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT { ?p foaf:name ?n } WHERE { ?p foaf:name ?n }' ! serialize -f ttl
+```
+
+Other options: `-r` selects an entailment regime (`simple`, `rdf`, `rdfs`;
+default `simple`), and `-d` recognizes common datatypes so that e.g. `42` and
+`042` compare as identical. The subcommand alias is `q`.
+
 ### The `filter` subcommand
 
 This commands keeps only quads that match certain conditions, expressed as a SPARQL expression.
