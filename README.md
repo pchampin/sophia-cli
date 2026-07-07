@@ -145,7 +145,7 @@ sop --help
 
 ### The `query` subcommand
 
-This runs a [SPARQL] query against the quads flowing through the pipeline
+This runs a SPARQL query against the quads flowing through the pipeline
 (read from files, URLs or stdin by `parse`).
 
 Run an inline query over a local file:
