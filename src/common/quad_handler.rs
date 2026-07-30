@@ -9,13 +9,76 @@ use sophia::{
 
 use super::quad_iter::QuadIter;
 
+/// Quads are conveyed between threads in batches, to amortize the cost of synchronization.
+const QUAD_BATCH_SIZE: usize = 512;
+
+/// How many batches may sit in a [`quad_channel`] before producers are throttled.
+///
+/// Without such a bound, a producer that is faster than its consumer
+/// (e.g. parsing N-Triples, which is much cheaper than `map`'s per-quad SPARQL evaluation)
+/// makes the queue grow until memory runs out.
+const QUAD_CHANNEL_BOUND: usize = 32;
+
+type QuadBatch = Vec<Spog<ArcTerm>>;
+
+/// Create the bounded channel used to convey quads between threads.
+///
+/// The bound is what applies back-pressure on producers,
+/// keeping memory usage constant regardless of the input size.
+pub fn quad_channel() -> (
+    std::sync::mpsc::SyncSender<QuadBatch>,
+    std::sync::mpsc::Receiver<QuadBatch>,
+) {
+    std::sync::mpsc::sync_channel(QUAD_CHANNEL_BOUND)
+}
+
+/// Accumulate quads and send them over a [`quad_channel`] by batches.
+///
+/// Any quad left in the current batch is flushed on drop.
+pub struct BatchSender<'a> {
+    tx: &'a std::sync::mpsc::SyncSender<QuadBatch>,
+    batch: QuadBatch,
+}
+
+impl<'a> BatchSender<'a> {
+    pub fn new(tx: &'a std::sync::mpsc::SyncSender<QuadBatch>) -> Self {
+        Self {
+            tx,
+            batch: Vec::with_capacity(QUAD_BATCH_SIZE),
+        }
+    }
+
+    pub fn send(&mut self, quad: Spog<ArcTerm>) {
+        self.batch.push(quad);
+        if self.batch.len() == QUAD_BATCH_SIZE {
+            self.flush();
+        }
+    }
+
+    fn flush(&mut self) {
+        if self.batch.is_empty() {
+            return;
+        }
+        let batch = std::mem::replace(&mut self.batch, Vec::with_capacity(QUAD_BATCH_SIZE));
+        if let Err(err) = self.tx.send(batch) {
+            log::warn!("{err}");
+        }
+    }
+}
+
+impl Drop for BatchSender<'_> {
+    fn drop(&mut self) {
+        self.flush();
+    }
+}
+
 pub enum QuadHandler<'a> {
     Stdout,
     Pipeline(crate::SinkSubcommand),
     Sender {
         name: String,
         bnode_suffix: String,
-        tx: &'a std::sync::mpsc::Sender<Spog<ArcTerm>>,
+        tx: &'a std::sync::mpsc::SyncSender<QuadBatch>,
     },
 }
 
@@ -40,13 +103,14 @@ impl QuadHandler<'_> {
                 bnode_suffix,
                 tx,
             } => {
+                let mut sender = BatchSender::new(tx);
                 quads
                     .as_iter()
                     .map(|i| i.map_err(|err| log::warn!("{name}: {err}")))
                     .take_while(Result::is_ok) // prevent looping on the same error, which some parsers do
                     .map(Result::unwrap)
                     .map(|quad| add_bnode_suffix_q(quad, &bnode_suffix))
-                    .for_each(|i| tx.send(i).map_err(|err| log::warn!("{err}")).unwrap());
+                    .for_each(|i| sender.send(i)); // sender flushes its last batch on drop
                 Ok(())
             }
         }
