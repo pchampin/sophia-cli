@@ -28,7 +28,7 @@ use crate::common::{
     format::Format,
     pipe::PipeSubcommand,
     prefix_map::parse_prefix_map,
-    quad_handler::QuadHandler,
+    quad_handler::{BatchSender, QuadHandler},
     quad_iter::{QuadIter, QuadIterItem},
 };
 
@@ -93,20 +93,20 @@ pub fn run(quads: QuadIter, mut args: Args) -> Result<()> {
             bail!("Can only pipe 'serialize' to sub-command if --output is specified.")
         };
         let file = std::fs::File::create(filename)?;
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = crate::common::quad_handler::quad_channel();
         let tee_thread = std::thread::spawn(|| {
             serialize_to_write(
-                QuadIter::new(rx.into_iter().map(QuadIterItem::Ok)),
+                QuadIter::new(rx.into_iter().flatten().map(QuadIterItem::Ok)),
                 args,
                 file,
             )
         });
         let handler = QuadHandler::new(Some(pipeline));
-        let ret = handler.handle_quads(QuadIter::new(quads.inspect(|res| {
+        // `sender` is dropped along with the closure below, flushing its last batch
+        let mut sender = BatchSender::new(&tx);
+        let ret = handler.handle_quads(QuadIter::new(quads.inspect(move |res| {
             if let Ok(quad) = res {
-                tx.send(quad.clone())
-                    .map_err(|err| log::warn!("{err}"))
-                    .unwrap();
+                sender.send(quad.clone());
             }
         })));
         drop(tx); // hang up the channel, so that tee_thread stops after empying it
