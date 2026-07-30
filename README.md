@@ -47,12 +47,19 @@ sop parse -m "examples/msg-*.nt" m-
 <details>
 <summary>More about globbing</summary>
   
-> The internal globbing support uses the [glob](https://crates.io/crates/glob) crate and supports:
+> The internal globbing support uses the [globset](https://crates.io/crates/globset) crate and supports:
 > * `?` matches any single character.
 > * `*` matches any sequence of characters (except directory separators).
 > * `**` matches any sequence of characters including directory separators.
 > * `[a-z]` matches any character in the bracketed range.
 > * `[!a-z]` matches any character NOT in the bracketed range.
+> * `{ttl,nt}` matches any of the comma-separated alternatives.
+>
+> So several extensions can be gathered in a single pattern:
+> ```bash
+> sop parse -m "examples/*.{nt,ttl}" m-
+> ```
+> Note that directories are never matched, only files.
 
 </details>
   
