@@ -55,10 +55,9 @@ impl<'a> BatchSender<'a> {
         }
     }
 
+    /// Send the current batch, which must not be empty.
     fn flush(&mut self) {
-        if self.batch.is_empty() {
-            return;
-        }
+        debug_assert!(!self.batch.is_empty());
         let batch = std::mem::replace(&mut self.batch, Vec::with_capacity(QUAD_BATCH_SIZE));
         if let Err(err) = self.tx.send(batch) {
             log::warn!("{err}");
@@ -68,7 +67,10 @@ impl<'a> BatchSender<'a> {
 
 impl Drop for BatchSender<'_> {
     fn drop(&mut self) {
-        self.flush();
+        // Unlike `send`, this is the one caller that can have nothing left to send.
+        if !self.batch.is_empty() {
+            self.flush();
+        }
     }
 }
 
