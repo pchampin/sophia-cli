@@ -138,9 +138,11 @@ pub fn run(mut args: Args) -> Result<()> {
             FileOrUrl::Url(url) => parse_url(args, url, handler),
         }
     } else {
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = crate::common::quad_handler::quad_channel();
         let sink_thread = std::thread::spawn(|| {
-            handler.handle_quads(QuadIter::new(rx.into_iter().map(QuadIterItem::Ok)))
+            handler.handle_quads(QuadIter::new(
+                rx.into_iter().flatten().map(QuadIterItem::Ok),
+            ))
         });
         std::mem::take(&mut args.multiple)
             .into_iter()
