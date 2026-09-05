@@ -9,6 +9,12 @@ on:
 permissions:
   contents: write
 
+env:
+  # Work around Cargo's gitoxide-based git fetch sometimes failing to find
+  # revisions that are only reachable via a tag (as opposed to a branch tip)
+  # when resolving git dependencies pinned by `rev`, which trips up --locked.
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+
 jobs:
   build:
     strategy:
