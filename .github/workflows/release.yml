@@ -24,6 +24,11 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
+          # There is no 'ubuntu-latest-arm', the ARM64 runner label must be pinned;
+          # 24.04 keeps the same glibc baseline as the x86_64 runner above.
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            archive: tar.gz
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             archive: zip
