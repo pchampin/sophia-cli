@@ -1,3 +1,7 @@
+* v0.1.0-alpha2
+
+  + improve memory usage (thanks to @ludovicm67)
+
 * v0.1.0-alpha1
 
-  First release, mostly for testing the CI action that generates them.
+  + First release, mostly for testing the CI action that generates them.
