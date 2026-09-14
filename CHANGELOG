@@ -1,3 +1,7 @@
+* v0.1.0-alpha3
+
+  + add build for aarch64 linux (thanks to @ludovicm67)
+
 * v0.1.0-alpha2
 
   + improve memory usage (thanks to @ludovicm67)
